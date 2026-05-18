@@ -274,3 +274,4 @@ CMD ["uvicorn", "backend.main:app", "--workers", "16", ...]
 
 *© 2026 Bobdo Trading and Finance. Tous droits réservés.*
 *Le trading comporte des risques. Les résultats passés ne garantissent pas les résultats futurs.*
+# BOBDOTRADING
