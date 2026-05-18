@@ -1,0 +1,54 @@
+services:
+  # ─── API FastAPI sur Render ────────────────────────────────────────────────
+  - type: web
+    name: btf-api
+    runtime: python
+    region: frankfurt
+    plan: starter        # Passer à "standard" en production (500K users)
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 2
+    envVars:
+      - key: DATABASE_URL
+        sync: false           # À saisir manuellement dans Render Dashboard
+      - key: JWT_SECRET_KEY
+        generateValue: true   # Render génère automatiquement
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: ORANGE_MONEY_NUMBER
+        sync: false
+      - key: WAVE_NUMBER
+        sync: false
+      - key: MOOV_MONEY_NUMBER
+        sync: false
+      - key: ADMIN_PIN_CODE
+        sync: false
+      - key: ADMIN_ALERT_EMAIL
+        sync: false
+      - key: ADMIN_PHONE
+        sync: false
+      - key: ADMIN_ALLOWED_IPS
+        value: "0.0.0.0"     # Changer après déploiement !
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12.0"

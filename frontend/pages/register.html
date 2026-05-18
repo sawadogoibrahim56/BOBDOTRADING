@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTF – Créer un compte</title>
+<link rel="stylesheet" href="../assets/css/btf.css">
+<style>
+.auth-shell {
+  min-height:100vh;
+  display:flex; align-items:center; justify-content:center;
+  padding:2rem 1rem;
+}
+.auth-box {
+  width:100%; max-width:480px;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:20px;
+  padding:2.5rem;
+  position:relative; z-index:1;
+}
+.auth-logo {
+  display:flex; align-items:center; gap:.7rem;
+  margin-bottom:2rem;
+}
+.auth-logo .logo-mark { width:40px;height:40px;font-size:.9rem;border-radius:11px; }
+.auth-logo .name { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:800; }
+.auth-logo .name span { color:var(--accent); }
+
+.trial-banner {
+  display:flex; align-items:center; gap:.75rem;
+  background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.04));
+  border:1px solid rgba(245,158,11,.25);
+  border-radius:var(--radius);
+  padding:.75rem 1rem;
+  margin-bottom:1.75rem;
+}
+.trial-banner .icon { font-size:1.4rem; }
+.trial-banner .info .days {
+  font-family:'Syne',sans-serif; font-size:.9rem; font-weight:700; color:var(--gold2);
+}
+.trial-banner .info .sub { font-size:.72rem; color:var(--text-muted); }
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+
+<div class="auth-shell">
+  <div class="auth-box slide-up">
+    <div class="auth-logo">
+      <div class="logo-mark">BTF</div>
+      <div>
+        <div class="name">Bobdo <span>Trading</span> & Finance</div>
+        <div style="font-size:.68rem;color:var(--text-muted);">L'argent simple, sécurisé et intelligent</div>
+      </div>
+    </div>
+
+    <div class="trial-banner">
+      <div class="icon">🎁</div>
+      <div class="info">
+        <div class="days">7 jours d'essai gratuit</div>
+        <div class="sub">Mode simulation avec prix réels · Aucune carte requise · Puis 5 000 F CFA/mois</div>
+      </div>
+    </div>
+
+    <h1 style="font-size:1.4rem;margin-bottom:.25rem;">Créer votre compte</h1>
+    <p style="font-size:.82rem;color:var(--text-dim);margin-bottom:1.75rem;">
+      Rejoignez les traders de l'Afrique de l'Ouest sur BTF.
+    </p>
+
+    <div id="registerAlert"></div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Prénom & Nom</label>
+        <input type="text" id="fullName" class="form-input" placeholder="Oumarou Traoré">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Pays</label>
+        <select id="country" class="form-select">
+          <option value="BF">🇧🇫 Burkina Faso</option>
+          <option value="CI">🇨🇮 Côte d'Ivoire</option>
+          <option value="SN">🇸🇳 Sénégal</option>
+          <option value="ML">🇲🇱 Mali</option>
+          <option value="TG">🇹🇬 Togo</option>
+          <option value="BJ">🇧🇯 Bénin</option>
+          <option value="NE">🇳🇪 Niger</option>
+          <option value="GW">🇬🇼 Guinée-Bissau</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Adresse Email</label>
+      <input type="email" id="email" class="form-input" placeholder="vous@exemple.com">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Téléphone (optionnel)</label>
+      <input type="tel" id="phone" class="form-input" placeholder="+226 XX XX XX XX">
+      <p class="form-hint">Pour les notifications SMS d'ordres exécutés.</p>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <input type="password" id="password" class="form-input" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmer</label>
+        <input type="password" id="password2" class="form-input" placeholder="••••••••">
+      </div>
+    </div>
+
+    <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:1.25rem;line-height:1.6;">
+      En créant un compte, vous acceptez les 
+      <a href="#" style="color:var(--accent);">Conditions d'utilisation</a> et la 
+      <a href="#" style="color:var(--accent);">Politique de confidentialité</a> de BTF.
+      Le trading comporte des risques. Résultats passés ne garantissent pas les résultats futurs.
+    </div>
+
+    <button class="btn btn-primary btn-full btn-lg" id="registerBtn" onclick="doRegister()">
+      🚀 Démarrer l'essai gratuit
+    </button>
+
+    <div style="text-align:center;margin-top:1.25rem;font-size:.8rem;color:var(--text-muted);">
+      Déjà un compte ? <a href="login.html" style="color:var(--accent);">Se connecter</a>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/btf-config.js"></script>
+<script src="../assets/js/btf-api.js"></script>
+<script>
+if (BTFApi.isLoggedIn()) window.location.href = 'dashboard.html';
+
+async function doRegister() {
+  const fullName = document.getElementById('fullName').value.trim();
+  const email    = document.getElementById('email').value.trim();
+  const phone    = document.getElementById('phone').value.trim();
+  const country  = document.getElementById('country').value;
+  const password = document.getElementById('password').value;
+  const password2= document.getElementById('password2').value;
+  const btn      = document.getElementById('registerBtn');
+  const alertEl  = document.getElementById('registerAlert');
+
+  alertEl.innerHTML = '';
+  if (!fullName || !email || !password) {
+    alertEl.innerHTML = `<div class="alert alert-error">Veuillez remplir tous les champs obligatoires.</div>`; return;
+  }
+  if (password.length < 8) {
+    alertEl.innerHTML = `<div class="alert alert-error">Le mot de passe doit contenir au moins 8 caractères.</div>`; return;
+  }
+  if (password !== password2) {
+    alertEl.innerHTML = `<div class="alert alert-error">Les mots de passe ne correspondent pas.</div>`; return;
+  }
+
+  UI.loading(btn, true);
+  try {
+    await BTFApi.register({ full_name: fullName, email, phone: phone || null, password, country });
+    // Auto-login
+    const loginRes = await BTFApi.login(email, password);
+    BTFApi.saveTokens(loginRes.access_token, loginRes.refresh_token);
+    try {
+      const user = await BTFApi.getMe();
+      BTFApi.saveUser(user);
+    } catch(_) {}
+    UI.toast('✅ Compte créé ! 7 jours d\'essai démarrés.', 'success');
+    setTimeout(() => window.location.href = 'dashboard.html', 800);
+  } catch (e) {
+    alertEl.innerHTML = `<div class="alert alert-error">${e.detail || 'Erreur lors de la création du compte.'}</div>`;
+    UI.loading(btn, false);
+  }
+}
+</script>
+</body>
+</html>

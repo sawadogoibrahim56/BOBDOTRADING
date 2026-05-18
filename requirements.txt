@@ -1,0 +1,42 @@
+# BTF – Dépendances Python (versions fixées)
+
+# Framework Web
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+
+# Base de données
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+supabase==2.10.0
+
+# Authentification & Sécurité
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+pyotp==2.9.0
+cryptography==43.0.3
+qrcode==8.0
+
+# Trading
+ccxt==4.4.29
+numpy==1.26.4
+
+# HTTP Client
+httpx==0.28.1
+
+# Notifications
+twilio==9.4.0
+
+# Scheduler
+apscheduler==3.10.4
+
+# Validation
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+
+# Utilitaires
+python-dotenv==1.0.1
+orjson==3.10.12
+uvloop==0.21.0
+httptools==0.6.4

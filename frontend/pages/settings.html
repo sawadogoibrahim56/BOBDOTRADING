@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTF – Paramètres</title>
+<link rel="stylesheet" href="../assets/css/btf.css">
+<style>
+.app-layout{display:flex;min-height:calc(100vh - 60px);}
+.main-area{flex:1;overflow-y:auto;padding:1.5rem 2rem;max-width:900px;}
+
+.settings-tabs{display:flex;gap:.35rem;background:rgba(0,0,0,.25);border-radius:12px;padding:4px;margin-bottom:1.75rem;}
+.stab{flex:1;padding:.5rem;border-radius:9px;font-size:.8rem;font-weight:600;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-family:'Instrument Sans',sans-serif;transition:all .2s;text-align:center;}
+.stab.active{background:var(--card2);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.stab-section{display:none;}
+.stab-section.show{display:flex;flex-direction:column;gap:1.25rem;}
+
+/* API KEYS */
+.exchange-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.85rem;margin-bottom:1.25rem;}
+.exchange-card{
+  background:var(--card2);border:2px solid var(--border);border-radius:var(--radius-lg);
+  padding:.9rem;cursor:pointer;transition:all .2s;text-align:center;
+}
+.exchange-card:hover,.exchange-card.selected{border-color:var(--accent);background:rgba(56,189,248,.06);}
+.exchange-card.connected{border-color:var(--green);background:rgba(16,185,129,.04);}
+.exch-icon{font-size:1.8rem;margin-bottom:.3rem;}
+.exch-name{font-size:.8rem;font-weight:700;}
+.exch-status{font-size:.65rem;margin-top:.25rem;}
+
+/* RISK */
+.risk-setting{display:flex;align-items:center;justify-content:space-between;padding:.85rem 0;border-bottom:1px solid var(--border);}
+.risk-setting:last-child{border-bottom:none;}
+.risk-setting-info .title{font-size:.88rem;font-weight:600;margin-bottom:.2rem;}
+.risk-setting-info .desc{font-size:.73rem;color:var(--text-muted);}
+.risk-setting-control{display:flex;align-items:center;gap:.5rem;flex-shrink:0;}
+.num-input{width:80px;background:rgba(0,0,0,.35);border:1px solid var(--border2);border-radius:8px;padding:.4rem .6rem;color:var(--text);font-size:.85rem;font-family:'DM Mono',monospace;text-align:center;outline:none;}
+.num-input:focus{border-color:var(--accent);}
+
+/* SECURITY */
+.security-row{display:flex;align-items:center;justify-content:space-between;padding:1rem;background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:.75rem;}
+.security-info .title{font-size:.88rem;font-weight:600;margin-bottom:.2rem;}
+.security-info .desc{font-size:.73rem;color:var(--text-muted);}
+
+/* PROFILE */
+.avatar-circle{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:grid;place-items:center;font-size:1.5rem;font-weight:800;font-family:'Syne',sans-serif;color:#fff;box-shadow:0 0 20px rgba(56,189,248,.3);}
+
+/* TOTP QR */
+.qr-box{background:var(--card2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1.5rem;text-align:center;}
+.qr-code{width:160px;height:160px;background:#fff;border-radius:12px;margin:0 auto 1rem;display:grid;place-items:center;font-size:.7rem;color:#333;padding:.5rem;}
+
+@media(max-width:768px){.exchange-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+
+<nav class="navbar">
+  <a href="dashboard.html" class="nav-logo"><div class="logo-mark">BTF</div>Bobdo <span style="color:var(--accent);margin:0 .2rem;">Trading</span></a>
+  <ul class="nav-links">
+    <li><a href="dashboard.html">⚡ Dashboard</a></li>
+    <li><a href="markets.html">📊 Marchés</a></li>
+    <li><a href="physical.html">🌾 Marché Physique</a></li>
+    <li><a href="settings.html" class="active">⚙️ Paramètres</a></li>
+    <li><a href="payment.html">💳 Abonnement</a></li>
+  </ul>
+  <div class="nav-actions">
+    <span class="badge badge-gold" id="statusBadge">● DEMO</span>
+    <button class="btn btn-ghost btn-sm" onclick="BTFApi.logout().then(()=>location.href='login.html')">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" onclick="location.href='dashboard.html'"><span class="sidebar-icon">⚡</span>Dashboard</li>
+        <li class="sidebar-item" onclick="location.href='markets.html'"><span class="sidebar-icon">📊</span>Marchés</li>
+        <li class="sidebar-item active"><span class="sidebar-icon">⚙️</span>Paramètres</li>
+        <li class="sidebar-item" onclick="location.href='payment.html'"><span class="sidebar-icon">💳</span>Paiement</li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <div style="margin-bottom:1.5rem;">
+      <h1 style="font-size:1.3rem;margin-bottom:.25rem;">⚙️ Paramètres</h1>
+      <p style="font-size:.82rem;color:var(--text-dim);">Gérez vos clés API, profil de risque et sécurité.</p>
+    </div>
+
+    <!-- TABS -->
+    <div class="settings-tabs">
+      <button class="stab active" onclick="showTab('profile',this)">👤 Profil</button>
+      <button class="stab" onclick="showTab('apikeys',this)">🔑 Clés API</button>
+      <button class="stab" onclick="showTab('risk',this)">🛡️ Risk Manager</button>
+      <button class="stab" onclick="showTab('security',this)">🔒 Sécurité</button>
+      <button class="stab" onclick="showTab('trading',this)">⚡ Trading</button>
+    </div>
+
+    <!-- ── PROFIL ──────────────────────────────────────────────────── -->
+    <div class="stab-section show" id="tab-profile">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Informations Personnelles</span></div>
+        <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem;">
+          <div class="avatar-circle" id="avatarCircle">?</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;" id="profileName">–</div>
+            <div style="font-size:.8rem;color:var(--text-muted);" id="profileEmail">–</div>
+            <div style="margin-top:.4rem;" id="profileStatusBadge">–</div>
+          </div>
+        </div>
+        <div id="profileAlert"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nom complet</label><input type="text" id="pFullName" class="form-input"></div>
+          <div class="form-group"><label class="form-label">Téléphone</label><input type="tel" id="pPhone" class="form-input"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Pays</label>
+            <select id="pCountry" class="form-select">
+              <option value="BF">🇧🇫 Burkina Faso</option><option value="CI">🇨🇮 Côte d'Ivoire</option>
+              <option value="SN">🇸🇳 Sénégal</option><option value="ML">🇲🇱 Mali</option>
+              <option value="TG">🇹🇬 Togo</option><option value="BJ">🇧🇯 Bénin</option>
+              <option value="NE">🇳🇪 Niger</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mode de trading</label>
+            <select id="pMode" class="form-select">
+              <option value="demo">🎮 Démo (simulation)</option>
+              <option value="real">💰 Réel</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveProfile()">💾 Sauvegarder</button>
+      </div>
+    </div>
+
+    <!-- ── CLÉS API ────────────────────────────────────────────────── -->
+    <div class="stab-section" id="tab-apikeys">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🔑 Connexions Exchanges</span>
+          <span class="badge badge-blue">Chiffrement AES-256</span>
+        </div>
+        <div class="alert alert-warning" style="margin-bottom:1.25rem;">
+          ⚠️ BTF ne demande que les droits <strong>Lecture + Trading</strong>. Les droits de <strong>Retrait sont interdits</strong>. Vérifiez les permissions lors de la création de vos clés API sur chaque exchange.
+        </div>
+        <div class="exchange-grid" id="exchangeGrid">
+          <!-- Généré par JS -->
+        </div>
+        <div id="apiKeyForm" style="display:none;">
+          <div style="background:var(--card2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1.1rem;">
+            <div style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:1rem;" id="apiFormTitle">Connecter –</div>
+            <div id="apiFormAlert"></div>
+            <div class="form-group"><label class="form-label">Clé API</label><input type="text" id="apiKey" class="form-input mono" placeholder="Clé publique API"></div>
+            <div class="form-group"><label class="form-label">Secret API</label><input type="password" id="apiSecret" class="form-input mono" placeholder="Secret API"></div>
+            <div class="form-group" id="passphraseGroup" style="display:none;">
+              <label class="form-label">Passphrase (OKX, Kucoin)</label>
+              <input type="password" id="apiPassphrase" class="form-input mono" placeholder="Passphrase">
+            </div>
+            <div style="font-size:.73rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6;">
+              🔒 Vos clés sont chiffrées en AES-256 (Fernet) avant stockage. Elles ne sont jamais affichées en clair.
+            </div>
+            <div style="display:flex;gap:.75rem;">
+              <button class="btn btn-primary" id="saveApiBtn" onclick="saveApiKey()">🔗 Connecter</button>
+              <button class="btn btn-ghost" onclick="cancelApiForm()">Annuler</button>
+            </div>
+          </div>
+        </div>
+        <div id="connectedKeys" style="margin-top:1rem;"></div>
+      </div>
+    </div>
+
+    <!-- ── RISK MANAGER ───────────────────────────────────────────── -->
+    <div class="stab-section" id="tab-risk">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🛡️ Gardien du Risque</span>
+          <span class="badge badge-red">Priorité Absolue</span>
+        </div>
+        <div class="alert alert-info" style="margin-bottom:1rem;">
+          Le Gardien du Risque dispose d'un <strong>droit de veto absolu</strong> sur tous les ordres. Ces paramètres s'appliquent en mode réel ET autonome.
+        </div>
+        <div id="riskAlert"></div>
+        <div class="risk-setting">
+          <div class="risk-setting-info">
+            <div class="title">Risque maximum par trade</div>
+            <div class="desc">% du capital total risqué sur un seul ordre. Maximum recommandé : 1%.</div>
+          </div>
+          <div class="risk-setting-control">
+            <input type="number" id="maxRisk" class="num-input" value="1.0" min="0.1" max="3" step="0.1">
+            <span style="font-size:.8rem;color:var(--text-muted);">%</span>
+          </div>
+        </div>
+        <div class="risk-setting">
+          <div class="risk-setting-info">
+            <div class="title">Drawdown quotidien maximum</div>
+            <div class="desc">Arrêt d'urgence automatique 24h si atteint. Limite absolue : 2%.</div>
+          </div>
+          <div class="risk-setting-control">
+            <input type="number" id="maxDrawdown" class="num-input" value="2.0" min="0.5" max="5" step="0.1">
+            <span style="font-size:.8rem;color:var(--text-muted);">%</span>
+          </div>
+        </div>
+        <div class="risk-setting">
+          <div class="risk-setting-info">
+            <div class="title">Stop-Loss obligatoire</div>
+            <div class="desc">Aucun ordre ne peut être exécuté sans Stop-Loss défini.</div>
+          </div>
+          <div class="risk-setting-control">
+            <div class="toggle-wrap" onclick="toggleSlObligation()">
+              <div class="toggle on" id="slToggle"><div class="toggle-knob"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="risk-setting">
+          <div class="risk-setting-info">
+            <div class="title">Take-Profit recommandé</div>
+            <div class="desc">Alerter si un ordre est passé sans Take-Profit.</div>
+          </div>
+          <div class="risk-setting-control">
+            <div class="toggle-wrap" onclick="toggleTpObligation()">
+              <div class="toggle on" id="tpToggle"><div class="toggle-knob"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="risk-setting">
+          <div class="risk-setting-info">
+            <div class="title">Nombre maximum de trades ouverts</div>
+            <div class="desc">Limite le nombre de positions simultanées.</div>
+          </div>
+          <div class="risk-setting-control">
+            <input type="number" id="maxTrades" class="num-input" value="10" min="1" max="50">
+          </div>
+        </div>
+        <div style="margin-top:1.25rem;display:flex;gap:.75rem;">
+          <button class="btn btn-primary" onclick="saveRiskProfile()">💾 Sauvegarder</button>
+          <button class="btn btn-ghost" onclick="resetRisk()">↺ Valeurs par défaut</button>
+        </div>
+        <!-- DRAWDOWN STATUS -->
+        <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border);">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:.85rem;">📊 Statut Drawdown Actuel</div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:.4rem;font-size:.78rem;">
+            <span class="text-muted">Drawdown aujourd'hui</span>
+            <span class="mono text-gold" id="currentDrawdown">0.00% / 2.00%</span>
+          </div>
+          <div class="progress"><div class="progress-fill fill-gold" id="drawdownBar" style="width:0%"></div></div>
+          <div style="font-size:.73rem;color:var(--text-muted);margin-top:.4rem;" id="emergencyInfo">✅ Aucun arrêt d'urgence actif</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SÉCURITÉ ────────────────────────────────────────────────── -->
+    <div class="stab-section" id="tab-security">
+      <!-- 2FA / TOTP -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">🔐 Authentification à Deux Facteurs (2FA)</span></div>
+        <div id="totpStatus">
+          <div class="security-row" style="margin-bottom:0;">
+            <div class="security-info">
+              <div class="title">TOTP (Google Authenticator / Authy)</div>
+              <div class="desc" id="totpDesc">Non activé. Fortement recommandé pour protéger votre compte.</div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="totpActionBtn" onclick="setupTotp()">Activer</button>
+          </div>
+        </div>
+        <div id="totpSetupBox" style="display:none;">
+          <div class="qr-box" style="margin-top:1rem;">
+            <div style="font-size:.82rem;color:var(--text-dim);margin-bottom:.75rem;">
+              1. Scannez ce QR code avec votre application<br>
+              2. Entrez le code à 6 chiffres pour confirmer
+            </div>
+            <div class="qr-code" id="qrCode">QR Code<br><small>Chargement…</small></div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:.75rem;">
+              Clé manuelle : <span class="mono text-accent" id="totpSecretDisplay">–</span>
+            </div>
+            <div style="display:flex;gap:.5rem;justify-content:center;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="totpConfirmCode" class="form-input mono" maxlength="6" placeholder="000000"
+                style="width:120px;text-align:center;font-size:1.2rem;letter-spacing:.2em;">
+              <button class="btn btn-success" onclick="confirmTotp()">✅ Confirmer</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelTotp()">Annuler</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MOT DE PASSE -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">🔑 Changer le Mot de Passe</span></div>
+        <div id="pwdAlert"></div>
+        <div class="form-group"><label class="form-label">Mot de passe actuel</label><input type="password" id="oldPwd" class="form-input"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nouveau mot de passe</label><input type="password" id="newPwd" class="form-input"></div>
+          <div class="form-group"><label class="form-label">Confirmer</label><input type="password" id="confirmPwd" class="form-input"></div>
+        </div>
+        <button class="btn btn-primary" onclick="changePassword()">🔐 Changer le mot de passe</button>
+      </div>
+
+      <!-- SESSIONS -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">📱 Informations de Sécurité</span></div>
+        <div class="security-row">
+          <div class="security-info">
+            <div class="title">Journalisation complète</div>
+            <div class="desc">Toutes vos actions sont enregistrées de façon immuable.</div>
+          </div>
+          <span class="badge badge-green">✓ Actif</span>
+        </div>
+        <div class="security-row">
+          <div class="security-info">
+            <div class="title">Chiffrement des clés API</div>
+            <div class="desc">Fernet AES-256. Jamais stockées en clair.</div>
+          </div>
+          <span class="badge badge-green">✓ AES-256</span>
+        </div>
+        <div class="security-row">
+          <div class="security-info">
+            <div class="title">Droits de retrait interdits</div>
+            <div class="desc">BTF ne peut jamais retirer vos fonds. Lecture + Trading uniquement.</div>
+          </div>
+          <span class="badge badge-green">✓ Garanti</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TRADING ────────────────────────────────────────────────── -->
+    <div class="stab-section" id="tab-trading">
+      <div class="card">
+        <div class="card-header"><span class="card-title">🤖 Mode Autonome IA</span></div>
+        <div class="alert alert-warning">
+          En activant le mode autonome, vous autorisez l'IA BTF à analyser les marchés et exécuter des ordres automatiquement en votre nom. Le Gardien du Risque conserve son veto absolu.
+        </div>
+        <div class="security-row">
+          <div class="security-info">
+            <div class="title">Mode Autonome</div>
+            <div class="desc" id="autoDesc">L'IA analysera et exécutera automatiquement.</div>
+          </div>
+          <div class="toggle-wrap">
+            <div class="toggle" id="autoModeTog" onclick="toggleAutoMode()"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+        <div class="security-row">
+          <div class="security-info">
+            <div class="title">Scanner de marché physique</div>
+            <div class="desc">Analyse des pénuries et opportunités UEMOA toutes les heures.</div>
+          </div>
+          <span class="badge badge-green">✓ Actif</span>
+        </div>
+        <div class="security-row">
+          <div class="security-info">
+            <div class="title">Notifications d'ordres</div>
+            <div class="desc">Email + SMS pour chaque ordre exécuté en mode réel.</div>
+          </div>
+          <div class="toggle-wrap">
+            <div class="toggle on" id="notifTog"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXCHANGES watchlist -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">📡 Watchlist IA Autonome</span></div>
+        <p style="font-size:.8rem;color:var(--text-dim);margin-bottom:1rem;">Actifs surveillés et tradés automatiquement par l'IA.</p>
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+          <div id="watchlistItems"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/js/btf-config.js"></script>
+<script src="../assets/js/btf-api.js"></script>
+<script>
+if (!BTFApi.isLoggedIn()) location.href = 'login.html';
+
+const EXCHANGES = [
+  {id:'binance',  name:'Binance',   icon:'🟡', hasPassphrase:false},
+  {id:'okx',      name:'OKX',       icon:'⚫', hasPassphrase:true},
+  {id:'bybit',    name:'Bybit',     icon:'🟠', hasPassphrase:false},
+  {id:'kraken',   name:'Kraken',    icon:'🟣', hasPassphrase:false},
+  {id:'kucoin',   name:'KuCoin',    icon:'🟢', hasPassphrase:true},
+  {id:'gateio',   name:'Gate.io',   icon:'🔵', hasPassphrase:false},
+  {id:'coinbase', name:'Coinbase',  icon:'🔷', hasPassphrase:false},
+  {id:'brvm',     name:'BRVM',      icon:'🏦', hasPassphrase:false},
+];
+
+const WATCHLIST = [
+  {symbol:'BTC/USDT',exchange:'Binance',type:'Crypto'},
+  {symbol:'ETH/USDT',exchange:'Binance',type:'Crypto'},
+  {symbol:'BNB/USDT',exchange:'Binance',type:'Crypto'},
+  {symbol:'SOL/USDT',exchange:'OKX',type:'Crypto'},
+  {symbol:'SONATEL',exchange:'BRVM',type:'Action'},
+  {symbol:'CORIS BANK',exchange:'BRVM',type:'Action'},
+  {symbol:'ECOBANK CI',exchange:'BRVM',type:'Action'},
+];
+
+let connectedKeys = [];
+let selectedExchange = null;
+let autoEnabled = false;
+let slRequired = true;
+let tpRequired = true;
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.stab-section').forEach(s=>s.classList.remove('show'));
+  document.getElementById('tab-'+name).classList.add('show');
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── LOAD USER ─────────────────────────────────────────────────────────────────
+async function loadUser() {
+  try {
+    const u = await BTFApi.getMe();
+    BTFApi.saveUser(u);
+    const initial = (u.full_name||'?').charAt(0).toUpperCase();
+    document.getElementById('avatarCircle').textContent = initial;
+    document.getElementById('profileName').textContent  = u.full_name||'–';
+    document.getElementById('profileEmail').textContent = u.email||'–';
+    document.getElementById('pFullName').value = u.full_name||'';
+    document.getElementById('pPhone').value    = u.phone||'';
+    document.getElementById('pCountry').value  = u.country||'BF';
+    document.getElementById('pMode').value     = u.trading_mode||'demo';
+    const statusMap={trial:'badge-gold',active:'badge-green',expired:'badge-red'};
+    document.getElementById('profileStatusBadge').innerHTML =
+      `<span class="badge ${statusMap[u.status]||'badge-muted'}">${u.status}</span>`;
+    if (u.totp_enabled) {
+      document.getElementById('totpDesc').textContent = '✅ TOTP activé – Votre compte est protégé.';
+      document.getElementById('totpActionBtn').textContent = 'Désactiver';
+      document.getElementById('totpActionBtn').className = 'btn btn-danger btn-sm';
+    }
+    autoEnabled = u.autonomous_enabled||false;
+    document.getElementById('autoModeTog').classList.toggle('on', autoEnabled);
+    document.getElementById('autoDesc').textContent = autoEnabled ?
+      '🤖 L\'IA trade automatiquement pour vous.' :
+      'L\'IA analysera et exécutera automatiquement.';
+    if (u.status==='active') {
+      document.getElementById('statusBadge').textContent='● ACTIF';
+      document.getElementById('statusBadge').className='badge badge-green';
+    }
+  } catch(_) {}
+}
+
+// ── SAVE PROFILE ──────────────────────────────────────────────────────────────
+async function saveProfile() {
+  const data = {
+    full_name: document.getElementById('pFullName').value,
+    phone: document.getElementById('pPhone').value||null,
+    country: document.getElementById('pCountry').value,
+    trading_mode: document.getElementById('pMode').value,
+  };
+  const alertEl = document.getElementById('profileAlert');
+  try {
+    await BTFApi.updateProfile(data);
+    alertEl.innerHTML = `<div class="alert alert-success">✅ Profil mis à jour.</div>`;
+    loadUser();
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">${e.detail||'Erreur.'}</div>`;
+  }
+}
+
+// ── API KEYS ──────────────────────────────────────────────────────────────────
+function renderExchangeGrid() {
+  document.getElementById('exchangeGrid').innerHTML = EXCHANGES.map(e=>{
+    const isConnected = connectedKeys.some(k=>k.exchange===e.id);
+    return `<div class="exchange-card ${isConnected?'connected':''}" onclick="selectExchange('${e.id}')">
+      <div class="exch-icon">${e.icon}</div>
+      <div class="exch-name">${e.name}</div>
+      <div class="exch-status ${isConnected?'text-green':'text-muted'}">${isConnected?'✓ Connecté':'Non connecté'}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectExchange(id) {
+  selectedExchange = EXCHANGES.find(e=>e.id===id);
+  document.getElementById('apiKeyForm').style.display='block';
+  document.getElementById('apiFormTitle').textContent = `Connecter ${selectedExchange.name}`;
+  document.getElementById('passphraseGroup').style.display = selectedExchange.hasPassphrase?'block':'none';
+  document.getElementById('apiKey').value='';
+  document.getElementById('apiSecret').value='';
+  document.getElementById('apiPassphrase').value='';
+}
+
+function cancelApiForm() {
+  document.getElementById('apiKeyForm').style.display='none';
+  selectedExchange=null;
+}
+
+async function saveApiKey() {
+  if (!selectedExchange) return;
+  const key  = document.getElementById('apiKey').value.trim();
+  const sec  = document.getElementById('apiSecret').value.trim();
+  const pp   = document.getElementById('apiPassphrase').value.trim();
+  const alertEl = document.getElementById('apiFormAlert');
+  if (!key||!sec) { alertEl.innerHTML='<div class="alert alert-error">Clé et Secret requis.</div>'; return; }
+  const btn = document.getElementById('saveApiBtn');
+  UI.loading(btn,true);
+  try {
+    await BTFApi.addApiKey({exchange:selectedExchange.id, api_key:key, api_secret:sec, passphrase:pp||null, label:selectedExchange.name});
+    alertEl.innerHTML=`<div class="alert alert-success">✅ ${selectedExchange.name} connecté avec succès.</div>`;
+    cancelApiForm();
+    await loadApiKeys();
+    UI.toast(`🔗 ${selectedExchange.name} connecté !`,'success');
+  } catch(e) {
+    alertEl.innerHTML=`<div class="alert alert-error">${e.detail||'Erreur de connexion.'}</div>`;
+  } finally { UI.loading(btn,false); }
+}
+
+async function loadApiKeys() {
+  try {
+    connectedKeys = await BTFApi.getApiKeys()||[];
+    renderExchangeGrid();
+    document.getElementById('connectedKeys').innerHTML = connectedKeys.length ?
+      `<div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.5rem;">Exchanges connectés :</div>`+
+      connectedKeys.map(k=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.15);border-radius:8px;margin-bottom:.35rem;">
+          <span style="font-size:.82rem;font-weight:600;">✓ ${k.exchange} · <span class="mono" style="font-size:.72rem;color:var(--text-muted);">****${(k.label||'').slice(-4)}</span></span>
+          <button class="btn btn-danger btn-sm" onclick="deleteKey('${k.id}')">✕</button>
+        </div>`).join('') : '';
+  } catch(_){ connectedKeys=[]; renderExchangeGrid(); }
+}
+
+async function deleteKey(id) {
+  if (!confirm('Supprimer cette connexion API ?')) return;
+  try { await BTFApi.deleteApiKey(id); loadApiKeys(); UI.toast('Connexion supprimée.','info'); }
+  catch(e){ UI.toast(e.detail||'Erreur.','error'); }
+}
+
+// ── RISK PROFILE ──────────────────────────────────────────────────────────────
+async function loadRiskProfile() {
+  try {
+    const r = await BTFApi.getRiskProfile();
+    document.getElementById('maxRisk').value     = r.max_risk_per_trade||1;
+    document.getElementById('maxDrawdown').value = r.max_daily_drawdown||2;
+    document.getElementById('maxTrades').value   = r.max_open_trades||10;
+    slRequired = r.require_stop_loss;
+    tpRequired = r.require_take_profit;
+    document.getElementById('slToggle').classList.toggle('on',slRequired);
+    document.getElementById('tpToggle').classList.toggle('on',tpRequired);
+    const dd = r.current_daily_drawdown||0;
+    const max= r.max_daily_drawdown||2;
+    document.getElementById('currentDrawdown').textContent = `${dd.toFixed(2)}% / ${max.toFixed(2)}%`;
+    document.getElementById('drawdownBar').style.width = Math.min(100,dd/max*100)+'%';
+    if (r.emergency_stopped) {
+      document.getElementById('emergencyInfo').textContent = `🛑 Arrêt d'urgence actif jusqu'au ${new Date(r.emergency_resume_at).toLocaleString('fr-FR')}`;
+      document.getElementById('emergencyInfo').className = 'text-red';
+    }
+  } catch(_) {}
+}
+
+async function saveRiskProfile() {
+  const alertEl = document.getElementById('riskAlert');
+  try {
+    await BTFApi.updateRiskProfile({
+      max_risk_per_trade: parseFloat(document.getElementById('maxRisk').value),
+      max_daily_drawdown: parseFloat(document.getElementById('maxDrawdown').value),
+      max_open_trades:    parseInt(document.getElementById('maxTrades').value),
+      require_stop_loss:  slRequired,
+      require_take_profit:tpRequired,
+    });
+    alertEl.innerHTML=`<div class="alert alert-success">✅ Profil de risque mis à jour.</div>`;
+  } catch(e){ alertEl.innerHTML=`<div class="alert alert-error">${e.detail||'Erreur.'}</div>`; }
+}
+
+function resetRisk() {
+  document.getElementById('maxRisk').value='1.0';
+  document.getElementById('maxDrawdown').value='2.0';
+  document.getElementById('maxTrades').value='10';
+  slRequired=true; tpRequired=true;
+  document.getElementById('slToggle').classList.add('on');
+  document.getElementById('tpToggle').classList.add('on');
+}
+
+function toggleSlObligation() { slRequired=!slRequired; document.getElementById('slToggle').classList.toggle('on',slRequired); }
+function toggleTpObligation() { tpRequired=!tpRequired; document.getElementById('tpToggle').classList.toggle('on',tpRequired); }
+
+// ── TOTP SETUP ────────────────────────────────────────────────────────────────
+let totpSecret = '';
+async function setupTotp() {
+  try {
+    const res = await BTFApi.setupTotp();
+    totpSecret = res.secret;
+    document.getElementById('totpSecretDisplay').textContent = res.secret;
+    document.getElementById('totpSetupBox').style.display='block';
+    // QR code via API publique
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(res.qr_uri)}`;
+    document.getElementById('qrCode').innerHTML = `<img src="${qrUrl}" alt="QR Code 2FA" style="width:150px;height:150px;border-radius:8px;">`;
+  } catch(e){ UI.toast(e.detail||'Erreur TOTP','error'); }
+}
+
+async function confirmTotp() {
+  const code = document.getElementById('totpConfirmCode').value.trim();
+  if (code.length!==6) { UI.toast('Code à 6 chiffres requis.','warning'); return; }
+  try {
+    await BTFApi.enableTotp(code);
+    document.getElementById('totpSetupBox').style.display='none';
+    document.getElementById('totpDesc').textContent='✅ TOTP activé – Votre compte est protégé.';
+    document.getElementById('totpActionBtn').textContent='Désactiver';
+    document.getElementById('totpActionBtn').className='btn btn-danger btn-sm';
+    UI.toast('✅ 2FA activé avec succès !','success');
+  } catch(e){ UI.toast(e.detail||'Code invalide.','error'); }
+}
+
+function cancelTotp() { document.getElementById('totpSetupBox').style.display='none'; }
+
+// ── CHANGE PASSWORD ───────────────────────────────────────────────────────────
+async function changePassword() {
+  const old  = document.getElementById('oldPwd').value;
+  const nw   = document.getElementById('newPwd').value;
+  const conf = document.getElementById('confirmPwd').value;
+  const alertEl = document.getElementById('pwdAlert');
+  if (!old||!nw) { alertEl.innerHTML=`<div class="alert alert-error">Remplissez tous les champs.</div>`; return; }
+  if (nw!==conf) { alertEl.innerHTML=`<div class="alert alert-error">Les mots de passe ne correspondent pas.</div>`; return; }
+  if (nw.length<8){ alertEl.innerHTML=`<div class="alert alert-error">Minimum 8 caractères.</div>`; return; }
+  try {
+    await BTFApi._req('PUT','/users/me/password',{old_password:old,new_password:nw});
+    alertEl.innerHTML=`<div class="alert alert-success">✅ Mot de passe modifié.</div>`;
+    document.getElementById('oldPwd').value='';document.getElementById('newPwd').value='';document.getElementById('confirmPwd').value='';
+  } catch(e){ alertEl.innerHTML=`<div class="alert alert-error">${e.detail||'Erreur.'}</div>`; }
+}
+
+// ── AUTO MODE ─────────────────────────────────────────────────────────────────
+async function toggleAutoMode() {
+  autoEnabled = !autoEnabled;
+  if (autoEnabled && !confirm('Confirmer l\'activation du Mode Autonome IA ? L\'IA exécutera des ordres en votre nom après analyse.')) {
+    autoEnabled=false; return;
+  }
+  document.getElementById('autoModeTog').classList.toggle('on',autoEnabled);
+  try {
+    await BTFApi.toggleAutonomous(autoEnabled,true);
+    document.getElementById('autoDesc').textContent = autoEnabled ?
+      '🤖 IA active. Analyse et exécution automatiques.' :
+      'L\'IA n\'exécutera pas automatiquement.';
+    UI.toast(autoEnabled?'🤖 Mode autonome activé.':'Mode autonome désactivé.', autoEnabled?'success':'info');
+  } catch(e){ UI.toast(e.detail||'Erreur.','error'); autoEnabled=!autoEnabled; document.getElementById('autoModeTog').classList.toggle('on',autoEnabled); }
+}
+
+// ── WATCHLIST ─────────────────────────────────────────────────────────────────
+function renderWatchlist() {
+  document.getElementById('watchlistItems').innerHTML = WATCHLIST.map(w=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .85rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;margin-bottom:.4rem;">
+      <div style="display:flex;align-items:center;gap:.65rem;">
+        <div class="live-dot" style="width:5px;height:5px;"></div>
+        <span class="mono" style="font-size:.82rem;font-weight:600;">${w.symbol}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.72rem;color:var(--text-muted);">${w.exchange}</span>
+        <span class="badge ${w.type==='Crypto'?'badge-blue':'badge-green'}">${w.type}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadUser();
+loadApiKeys();
+loadRiskProfile();
+renderWatchlist();
+</script>
+</body>
+</html>

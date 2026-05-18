@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTF – Abonnement & Paiement</title>
+<link rel="stylesheet" href="../assets/css/btf.css">
+<style>
+.pay-shell{min-height:calc(100vh - 60px);padding:2rem 1.5rem;display:flex;justify-content:center;align-items:flex-start;}
+.pay-wrap{width:100%;max-width:640px;display:flex;flex-direction:column;gap:1.25rem;}
+
+.sub-status-card{padding:1.5rem;border-radius:var(--radius-lg);}
+.sub-trial{background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.03));border:1px solid rgba(245,158,11,.25);}
+.sub-active{background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(16,185,129,.03));border:1px solid rgba(16,185,129,.25);}
+.sub-expired{background:linear-gradient(135deg,rgba(244,63,94,.1),rgba(244,63,94,.03));border:1px solid rgba(244,63,94,.25);}
+
+.method-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;}
+.method-card{
+  background:var(--card2);border:2px solid var(--border);border-radius:var(--radius-lg);
+  padding:1.1rem .85rem;text-align:center;cursor:pointer;transition:all .2s;
+}
+.method-card:hover,.method-card.selected{border-color:var(--accent);background:rgba(56,189,248,.07);}
+.method-card.selected{box-shadow:0 0 0 3px rgba(56,189,248,.15);}
+.method-icon{font-size:2rem;margin-bottom:.5rem;}
+.method-name{font-weight:700;font-size:.85rem;margin-bottom:.2rem;}
+.method-num{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--accent);margin-top:.35rem;}
+
+.step-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:50%;
+  background:var(--accent);color:#000;font-weight:800;font-size:.82rem;
+  flex-shrink:0;
+}
+
+.proof-drop{
+  border:2px dashed var(--border2);border-radius:var(--radius-lg);
+  padding:2rem;text-align:center;cursor:pointer;transition:all .2s;
+}
+.proof-drop:hover{border-color:var(--accent);background:rgba(56,189,248,.04);}
+.proof-drop.has-file{border-color:var(--green);background:rgba(16,185,129,.04);}
+
+.history-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.75rem 1rem;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);
+}
+@media(max-width:600px){.method-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+<nav class="navbar">
+  <a href="dashboard.html" class="nav-logo"><div class="logo-mark">BTF</div>Bobdo <span style="color:var(--accent);margin:0 .2rem;">Trading</span></a>
+  <ul class="nav-links">
+    <li><a href="dashboard.html">⚡ Dashboard</a></li>
+    <li><a href="markets.html">📊 Marchés</a></li>
+    <li><a href="physical.html">🌾 Marché Physique</a></li>
+    <li><a href="payment.html" class="active">💳 Abonnement</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="btn btn-ghost btn-sm" onclick="BTFApi.logout().then(()=>location.href='login.html')">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="pay-shell">
+  <div class="pay-wrap">
+
+    <!-- STATUT ABONNEMENT -->
+    <div class="sub-status-card sub-trial" id="subStatusCard">
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <div style="font-size:2.5rem;" id="subIcon">⏱️</div>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;" id="subTitle">Essai Gratuit en cours</div>
+          <div style="font-size:.82rem;color:var(--text-dim);margin-top:.2rem;" id="subDesc">–</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:var(--gold2);" id="subDays">–</div>
+          <div style="font-size:.72rem;color:var(--text-muted);">jours restants</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TARIF -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div>
+          <h2 style="font-size:1.1rem;margin-bottom:.2rem;">🚀 Abonnement BTF Premium</h2>
+          <p style="font-size:.8rem;color:var(--text-dim);">Accès complet · Trading réel · IA autonome · Marché physique</p>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--gold2);">5 000</div>
+          <div style="font-size:.75rem;color:var(--text-muted);">F CFA / mois</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;">
+        <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;"><span class="text-green">✓</span>Trading réel multi-exchange</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;"><span class="text-green">✓</span>IA autonome activable</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;"><span class="text-green">✓</span>Marché Physique UEMOA</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;"><span class="text-green">✓</span>Analyse technique complète</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;"><span class="text-green">✓</span>Gardien du Risque actif</div>
+        <div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;"><span class="text-green">✓</span>Notifications temps réel</div>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <button class="btn btn-ghost btn-sm" onclick="setMonths(1)">1 mois – 5 000F</button>
+        <button class="btn btn-gold btn-sm" onclick="setMonths(3)">3 mois – 15 000F ⭐</button>
+        <button class="btn btn-ghost btn-sm" onclick="setMonths(6)">6 mois – 30 000F</button>
+      </div>
+    </div>
+
+    <!-- FORMULAIRE PAIEMENT -->
+    <div class="card">
+      <h3 style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:1.25rem;">💳 Soumettre une Preuve de Paiement</h3>
+
+      <!-- ÉTAPE 1 : Choisir méthode -->
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;">
+        <div class="step-badge">1</div>
+        <span style="font-weight:600;font-size:.88rem;">Choisissez votre méthode</span>
+      </div>
+      <div class="method-grid" id="methodGrid">
+        <div class="method-card" onclick="selectMethod('orange_money',this)">
+          <div class="method-icon">🟠</div>
+          <div class="method-name">Orange Money</div>
+          <div class="method-num" id="numOrange">Chargement…</div>
+        </div>
+        <div class="method-card" onclick="selectMethod('wave',this)">
+          <div class="method-icon">🌊</div>
+          <div class="method-name">Wave</div>
+          <div class="method-num" id="numWave">Chargement…</div>
+        </div>
+        <div class="method-card" onclick="selectMethod('moov_money',this)">
+          <div class="method-icon">🟣</div>
+          <div class="method-name">Moov Money</div>
+          <div class="method-num" id="numMoov">Chargement…</div>
+        </div>
+      </div>
+
+      <div id="payInstructions" style="display:none;margin-top:1rem;">
+        <div class="alert alert-info" id="payInstructionText"></div>
+      </div>
+
+      <!-- ÉTAPE 2 : Infos paiement -->
+      <div style="display:flex;align-items:center;gap:.75rem;margin:1.25rem 0 .85rem;">
+        <div class="step-badge">2</div>
+        <span style="font-weight:600;font-size:.88rem;">Saisissez les informations</span>
+      </div>
+
+      <div id="payAlertArea"></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Votre N° d'envoi</label>
+          <input type="tel" id="senderPhone" class="form-input" placeholder="+226 XX XX XX XX">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Référence transaction</label>
+          <input type="text" id="txRef" class="form-input mono" placeholder="TXN123456">
+          <p class="form-hint">Numéro de confirmation reçu par SMS</p>
+        </div>
+      </div>
+
+      <!-- ÉTAPE 3 : Preuve -->
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;">
+        <div class="step-badge">3</div>
+        <span style="font-weight:600;font-size:.88rem;">Joignez votre preuve</span>
+      </div>
+
+      <div class="proof-drop" id="proofDrop" onclick="document.getElementById('proofFile').click()">
+        <div style="font-size:2rem;margin-bottom:.5rem;">📸</div>
+        <div style="font-weight:600;font-size:.88rem;margin-bottom:.25rem;" id="proofLabel">Cliquez pour télécharger votre capture d'écran</div>
+        <div style="font-size:.75rem;color:var(--text-muted);">PNG, JPG ou PDF · Max 5 Mo</div>
+        <input type="file" id="proofFile" accept="image/*,application/pdf" style="display:none;" onchange="handleProof(this)">
+      </div>
+
+      <div style="margin-top:.5rem;font-size:.75rem;color:var(--text-muted);line-height:1.7;">
+        ⚠️ <strong>Important :</strong> Les numéros de réception ne sont jamais stockés en base de données (sécurité maximale).
+        Votre preuve sera vérifiée manuellement par l'administrateur sous 24h ouvrées.
+        L'abonnement sera activé après confirmation.
+      </div>
+
+      <button class="btn btn-success btn-full btn-lg" style="margin-top:1.25rem;" id="submitBtn" onclick="submitPayment()">
+        ✅ Envoyer ma preuve de paiement
+      </button>
+    </div>
+
+    <!-- HISTORIQUE -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 Historique des Paiements</span>
+      </div>
+      <div id="payHistory" style="display:flex;flex-direction:column;gap:.5rem;">
+        <div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.82rem;">Chargement…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../assets/js/btf-config.js"></script>
+<script src="../assets/js/btf-api.js"></script>
+<script>
+if (!BTFApi.isLoggedIn()) location.href = 'login.html';
+
+let selectedMethod = null;
+let selectedMonths = 1;
+let proofFile = null;
+
+// ── LOAD SUBSCRIPTION STATUS ──────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const s = await BTFApi.getSubscriptionStatus();
+    const card = document.getElementById('subStatusCard');
+    if (s.type === 'trial') {
+      document.getElementById('subIcon').textContent = '⏱️';
+      document.getElementById('subTitle').textContent = 'Essai Gratuit en cours';
+      document.getElementById('subDesc').textContent = 'Mode simulation avec prix réels';
+      document.getElementById('subDays').textContent = s.days_remaining;
+    } else if (s.type === 'paid' && s.active) {
+      card.className = 'sub-status-card sub-active';
+      document.getElementById('subIcon').textContent = '✅';
+      document.getElementById('subTitle').textContent = 'Abonnement Actif';
+      document.getElementById('subDesc').textContent = 'Accès complet au trading réel';
+      document.getElementById('subDays').textContent = s.days_remaining;
+    } else {
+      card.className = 'sub-status-card sub-expired';
+      document.getElementById('subIcon').textContent = '❌';
+      document.getElementById('subTitle').textContent = 'Abonnement Expiré';
+      document.getElementById('subDesc').textContent = 'Renouvelez pour continuer à trader';
+      document.getElementById('subDays').textContent = '0';
+    }
+  } catch(_){
+    document.getElementById('subDays').textContent = '7';
+    document.getElementById('subTitle').textContent = 'Essai Gratuit';
+    document.getElementById('subDesc').textContent = 'Mode simulation avec prix réels';
+  }
+}
+
+// ── PAYMENT INFO ──────────────────────────────────────────────────────────────
+async function loadPaymentInfo() {
+  try {
+    const info = await BTFApi.getPaymentInfo();
+    const m = info.methods;
+    document.getElementById('numOrange').textContent = m.orange_money?.number || 'Non configuré';
+    document.getElementById('numWave').textContent   = m.wave?.number       || 'Non configuré';
+    document.getElementById('numMoov').textContent   = m.moov_money?.number || 'Non configuré';
+  } catch(_){
+    document.getElementById('numOrange').textContent = '+226 XX XX XX XX';
+    document.getElementById('numWave').textContent   = '+226 XX XX XX XX';
+    document.getElementById('numMoov').textContent   = '+226 XX XX XX XX';
+  }
+}
+
+// ── PAYMENT HISTORY ───────────────────────────────────────────────────────────
+async function loadHistory() {
+  const container = document.getElementById('payHistory');
+  try {
+    const history = await BTFApi.getPaymentHistory();
+    if (!history.length) {
+      container.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.82rem;">Aucun paiement enregistré.</div>`;
+      return;
+    }
+    container.innerHTML = history.map(p=>{
+      const statusBadge = {
+        pending: '<span class="badge badge-gold">En attente</span>',
+        approved:'<span class="badge badge-green">Approuvé</span>',
+        rejected:'<span class="badge badge-red">Rejeté</span>',
+      }[p.status] || p.status;
+      return `
+      <div class="history-item">
+        <div>
+          <div style="font-size:.82rem;font-weight:600;">${p.method} · ${p.period_months} mois</div>
+          <div style="font-size:.72rem;color:var(--text-muted);">${new Date(p.created_at).toLocaleDateString('fr-FR')}</div>
+          ${p.admin_note?`<div style="font-size:.72rem;color:var(--text-dim);margin-top:.2rem;">${p.admin_note}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;">
+          <span class="mono text-gold">${UI.formatFCFA(p.amount_fcfa)}</span>
+          ${statusBadge}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(_){
+    container.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.82rem;">Aucun paiement enregistré.</div>`;
+  }
+}
+
+// ── UI HELPERS ────────────────────────────────────────────────────────────────
+function selectMethod(method, card) {
+  document.querySelectorAll('.method-card').forEach(c=>c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedMethod = method;
+  const labels = {orange_money:'Orange Money',wave:'Wave',moov_money:'Moov Money'};
+  const nums = {
+    orange_money:document.getElementById('numOrange').textContent,
+    wave:document.getElementById('numWave').textContent,
+    moov_money:document.getElementById('numMoov').textContent,
+  };
+  document.getElementById('payInstructions').style.display='block';
+  document.getElementById('payInstructionText').innerHTML =
+    `📲 Envoyez <strong>${UI.formatFCFA(selectedMonths*5000)}</strong> au <strong>${nums[method]}</strong> via <strong>${labels[method]}</strong>, notez la référence et joignez la capture d'écran.`;
+}
+
+function setMonths(n) {
+  selectedMonths = n;
+  if (selectedMethod) selectMethod(selectedMethod, document.querySelector('.method-card.selected'));
+}
+
+function handleProof(input) {
+  if (input.files[0]) {
+    proofFile = input.files[0];
+    document.getElementById('proofDrop').classList.add('has-file');
+    document.getElementById('proofLabel').textContent = `✅ ${proofFile.name}`;
+  }
+}
+
+async function submitPayment() {
+  const phone = document.getElementById('senderPhone').value.trim();
+  const ref   = document.getElementById('txRef').value.trim();
+  const alertEl = document.getElementById('payAlertArea');
+  const btn = document.getElementById('submitBtn');
+  alertEl.innerHTML = '';
+
+  if (!selectedMethod) { alertEl.innerHTML = `<div class="alert alert-warning">Choisissez une méthode de paiement.</div>`; return; }
+  if (!phone) { alertEl.innerHTML = `<div class="alert alert-warning">Saisissez votre numéro d'envoi.</div>`; return; }
+
+  const fd = new FormData();
+  fd.append('payment_method', selectedMethod);
+  fd.append('sender_phone', phone);
+  fd.append('transaction_ref', ref);
+  fd.append('months', selectedMonths);
+  if (proofFile) fd.append('proof_image', proofFile);
+
+  UI.loading(btn, true);
+  try {
+    const res = await BTFApi.submitPayment(fd);
+    alertEl.innerHTML = `<div class="alert alert-success">${res.message}</div>`;
+    loadHistory();
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">${e.detail||'Erreur lors de l\'envoi.'}</div>`;
+  } finally { UI.loading(btn, false); }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadStatus();
+loadPaymentInfo();
+loadHistory();
+</script>
+</body>
+</html>

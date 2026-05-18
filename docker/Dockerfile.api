@@ -1,0 +1,35 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Dépendances système
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Dépendances Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Code source
+COPY backend/ ./backend/
+
+# Utilisateur non-root
+RUN useradd -m -u 1001 btfuser && chown -R btfuser:btfuser /app
+USER btfuser
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+EXPOSE 8000
+
+# Démarrage avec Uvicorn (production)
+CMD ["uvicorn", "backend.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--loop", "uvloop", \
+     "--http", "httptools", \
+     "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]

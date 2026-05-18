@@ -1,0 +1,19 @@
+# BTF – .gitignore
+.env
+*.pyc
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.DS_Store
+*.log
+logs/
+docker/ssl/
+*.pem
+*.key
+node_modules/
+.vercel/
+.netlify/

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTF – Administration</title>
+<link rel="stylesheet" href="../../frontend/assets/css/btf.css">
+<style>
+body{background:#06091a;}
+.admin-shell{min-height:100vh;display:flex;}
+.admin-sidebar{width:220px;flex-shrink:0;background:rgba(6,9,26,.95);border-right:1px solid rgba(244,63,94,.15);padding:1.5rem .85rem;display:flex;flex-direction:column;gap:1.5rem;}
+.admin-main{flex:1;padding:1.5rem 2rem;overflow-y:auto;}
+
+.admin-logo{display:flex;align-items:center;gap:.7rem;padding-bottom:1.25rem;border-bottom:1px solid rgba(244,63,94,.15);}
+.admin-badge{width:38px;height:38px;background:linear-gradient(135deg,#f43f5e,#be123c);border-radius:10px;display:grid;place-items:center;font-size:.85rem;font-weight:800;color:#fff;box-shadow:0 0 20px rgba(244,63,94,.4);}
+.admin-logo-text .name{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:800;}
+.admin-logo-text .role{font-size:.65rem;color:var(--red2);}
+
+.admin-section-label{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(244,63,94,.5);padding:0 .5rem;margin-bottom:.3rem;}
+.admin-menu{list-style:none;display:flex;flex-direction:column;gap:2px;}
+.admin-item{display:flex;align-items:center;gap:.6rem;padding:.5rem .65rem;border-radius:9px;font-size:.82rem;font-weight:500;color:var(--text-muted);cursor:pointer;transition:all .2s;}
+.admin-item:hover{background:rgba(244,63,94,.1);color:var(--red2);}
+.admin-item.active{background:rgba(244,63,94,.12);color:var(--red2);}
+.admin-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;border-radius:0 3px 3px 0;background:var(--red2);}
+.admin-item{position:relative;}
+
+/* LOGIN OVERLAY */
+.login-overlay{position:fixed;inset:0;background:rgba(6,9,26,.97);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.login-box{width:100%;max-width:420px;background:var(--card);border:1px solid rgba(244,63,94,.2);border-radius:20px;padding:2.5rem;position:relative;}
+.login-box h2{font-size:1.3rem;margin-bottom:.3rem;color:var(--red2);}
+
+/* TABS */
+.page-section{display:none;}
+.page-section.active{display:block;}
+
+/* KPI */
+.admin-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;}
+.admin-kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;}
+.admin-kpi .val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:700;margin:0.3rem 0;}
+.admin-kpi .lbl{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
+
+/* PAYMENT REVIEW */
+.pay-review-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;margin-bottom:.75rem;display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;}
+.pay-review-info .user{font-weight:600;font-size:.88rem;}
+.pay-review-info .meta{font-size:.72rem;color:var(--text-muted);margin-top:.2rem;}
+.pay-review-actions{display:flex;gap:.5rem;}
+
+/* LOGS */
+.log-row{display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;border-bottom:1px solid rgba(255,255,255,.04);font-size:.75rem;}
+.log-row:last-child{border-bottom:none;}
+.log-severity{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.sev-info{background:var(--accent);}
+.sev-warning{background:var(--gold);}
+.sev-critical{background:var(--red);}
+.log-module{font-family:'DM Mono',monospace;font-size:.68rem;background:rgba(255,255,255,.06);padding:.1rem .4rem;border-radius:4px;color:var(--text-dim);}
+.log-action{flex:1;color:var(--text-dim);}
+.log-time{font-size:.65rem;color:var(--text-muted);white-space:nowrap;}
+
+@media(max-width:1024px){.admin-kpi-row{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<div class="bg-mesh" style="--bg:#06091a;"></div>
+
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.75rem;">
+      <div class="admin-badge">🛡️</div>
+      <div><div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;">BTF Admin</div><div style="font-size:.72rem;color:var(--red2);">Accès Ultra-Sécurisé</div></div>
+    </div>
+    <h2>Connexion Administrateur</h2>
+    <p style="font-size:.8rem;color:var(--text-dim);margin-bottom:1.5rem;">MFA + TOTP + PIN requis. Toute tentative est enregistrée.</p>
+    <div id="adminLoginAlert"></div>
+    <div class="form-group"><label class="form-label">Email Admin</label><input type="email" id="adminEmail" class="form-input"></div>
+    <div class="form-group"><label class="form-label">Mot de passe</label><input type="password" id="adminPwd" class="form-input"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Code TOTP (6 chiffres)</label><input type="text" id="adminTotp" class="form-input mono" maxlength="6" placeholder="000000"></div>
+      <div class="form-group"><label class="form-label">Code PIN</label><input type="password" id="adminPin" class="form-input mono" maxlength="8" placeholder="••••••"></div>
+    </div>
+    <button class="btn btn-danger btn-full btn-lg" id="adminLoginBtn" onclick="doAdminLogin()">🔐 Connexion Sécurisée</button>
+  </div>
+</div>
+
+<!-- ADMIN SHELL -->
+<div class="admin-shell">
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-logo">
+      <div class="admin-badge">🛡️</div>
+      <div class="admin-logo-text"><div class="name">BTF Admin</div><div class="role">ACCÈS RESTREINT</div></div>
+    </div>
+    <div>
+      <div class="admin-section-label">Gestion</div>
+      <ul class="admin-menu">
+        <li class="admin-item active" onclick="showSection('dashboard',this)"><span>📊</span>Dashboard</li>
+        <li class="admin-item" onclick="showSection('payments',this)"><span>💳</span>Paiements <span class="sidebar-badge" id="pendingBadge">0</span></li>
+        <li class="admin-item" onclick="showSection('users',this)"><span>👥</span>Utilisateurs</li>
+        <li class="admin-item" onclick="showSection('reports',this)"><span>🌾</span>Rapports Physiques</li>
+        <li class="admin-item" onclick="showSection('orders',this)"><span>⚡</span>Ordres</li>
+        <li class="admin-item" onclick="showSection('logs',this)"><span>📋</span>Logs Système</li>
+      </ul>
+    </div>
+    <div style="margin-top:auto;">
+      <div style="font-size:.68rem;color:rgba(244,63,94,.5);padding:.5rem;border:1px solid rgba(244,63,94,.15);border-radius:8px;text-align:center;">
+        🔴 Session Admin Active<br>
+        <span id="sessionTime" class="mono" style="font-size:.65rem;">00:00:00</span>
+      </div>
+      <button class="btn btn-ghost btn-full" style="margin-top:.5rem;font-size:.75rem;" onclick="adminLogout()">Déconnexion</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+
+    <!-- DASHBOARD SECTION -->
+    <div class="page-section active" id="sec-dashboard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <div>
+          <h1 style="font-size:1.3rem;">📊 Dashboard Administrateur</h1>
+          <p style="font-size:.8rem;color:var(--text-dim);">Vue d'ensemble de la plateforme BTF</p>
+        </div>
+        <div style="font-size:.75rem;color:var(--text-muted);" id="dashTime">–</div>
+      </div>
+      <div class="admin-kpi-row" id="dashKpiRow">
+        <div class="admin-kpi"><div class="lbl">Utilisateurs Totaux</div><div class="val text-accent" id="kpiUsers">–</div></div>
+        <div class="admin-kpi"><div class="lbl">Abonnés Actifs</div><div class="val text-green" id="kpiActive">–</div></div>
+        <div class="admin-kpi"><div class="lbl">Paiements en attente</div><div class="val text-gold" id="kpiPending">–</div></div>
+        <div class="admin-kpi"><div class="lbl">Revenu Mensuel (F CFA)</div><div class="val text-purple" id="kpiRevenue">–</div></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;">
+        <div class="card-title" style="margin-bottom:.85rem;">⚠️ Actions Rapides</div>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+          <button class="btn btn-success" onclick="showSection('payments',document.querySelector('[onclick*=payments]'))">💳 Valider Paiements</button>
+          <button class="btn btn-primary" onclick="showSection('reports',document.querySelector('[onclick*=reports]'))">🌾 Valider Rapports</button>
+          <button class="btn btn-ghost" onclick="showSection('logs',document.querySelector('[onclick*=logs]'))">📋 Voir Logs Critiques</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENTS SECTION -->
+    <div class="page-section" id="sec-payments">
+      <h1 style="font-size:1.3rem;margin-bottom:1.25rem;">💳 Paiements en Attente</h1>
+      <div id="payAlertArea"></div>
+      <div id="paymentsList"><div style="text-align:center;padding:2rem;color:var(--text-muted);">Chargement…</div></div>
+    </div>
+
+    <!-- USERS SECTION -->
+    <div class="page-section" id="sec-users">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <h1 style="font-size:1.3rem;">👥 Utilisateurs</h1>
+        <input type="text" placeholder="Rechercher email…" class="form-input" style="width:220px;" oninput="loadUsers(this.value)">
+      </div>
+      <div class="table-wrap"><table class="table" id="usersTable">
+        <thead><tr><th>Nom</th><th>Email</th><th>Pays</th><th>Statut</th><th>Mode</th><th>IA</th><th>Inscrit</th></tr></thead>
+        <tbody id="usersBody"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">Chargement…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <!-- REPORTS SECTION -->
+    <div class="page-section" id="sec-reports">
+      <h1 style="font-size:1.3rem;margin-bottom:1.25rem;">🌾 Rapports Marché Physique</h1>
+      <div id="reportsList"><div style="text-align:center;padding:2rem;color:var(--text-muted);">Chargement…</div></div>
+    </div>
+
+    <!-- ORDERS SECTION -->
+    <div class="page-section" id="sec-orders">
+      <h1 style="font-size:1.3rem;margin-bottom:1.25rem;">⚡ Tous les Ordres</h1>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Paire</th><th>Côté</th><th>Montant</th><th>Statut</th><th>Mode</th><th>IA</th><th>Date</th></tr></thead>
+        <tbody id="ordersBody"><tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">Chargement…</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <!-- LOGS SECTION -->
+    <div class="page-section" id="sec-logs">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <h1 style="font-size:1.3rem;">📋 Logs Système (Immuables)</h1>
+        <div style="display:flex;gap:.5rem;">
+          <select class="form-select" style="width:140px;" onchange="loadLogs(this.value,'')">
+            <option value="">Toutes sévérités</option><option value="info">Info</option>
+            <option value="warning">Warning</option><option value="critical">Critical</option>
+          </select>
+          <select class="form-select" style="width:140px;" onchange="loadLogs('',this.value)">
+            <option value="">Tous modules</option><option value="auth">Auth</option>
+            <option value="trading">Trading</option><option value="admin">Admin</option>
+            <option value="payments">Payments</option>
+          </select>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div id="logsList" style="max-height:600px;overflow-y:auto;">
+          <div style="text-align:center;padding:2rem;color:var(--text-muted);">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/js/btf-config.js"></script>
+<script src="../assets/js/btf-api.js"></script>
+<script>
+const ADMIN_API = window.location.origin + '/admin-secret-gate';
+let adminToken = sessionStorage.getItem('btf_admin_token');
+let sessionStart = Date.now();
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+if (adminToken) {
+  document.getElementById('loginOverlay').style.display='none';
+  loadDashboard();
+} else {
+  document.getElementById('loginOverlay').style.display='flex';
+}
+
+// Session timer
+setInterval(()=>{
+  const elapsed = Math.floor((Date.now()-sessionStart)/1000);
+  const h=Math.floor(elapsed/3600), m=Math.floor((elapsed%3600)/60), s=elapsed%60;
+  document.getElementById('sessionTime').textContent =
+    String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+},1000);
+
+// ── ADMIN LOGIN ────────────────────────────────────────────────────────────────
+async function doAdminLogin() {
+  const email   = document.getElementById('adminEmail').value;
+  const pwd     = document.getElementById('adminPwd').value;
+  const totp    = document.getElementById('adminTotp').value;
+  const pin     = document.getElementById('adminPin').value;
+  const btn     = document.getElementById('adminLoginBtn');
+  const alertEl = document.getElementById('adminLoginAlert');
+  alertEl.innerHTML='';
+  UI.loading(btn, true);
+  try {
+    const resp = await fetch(ADMIN_API+'/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pwd,totp_code:totp,pin_code:pin})
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw {detail:data.detail};
+    adminToken = data.access_token;
+    sessionStorage.setItem('btf_admin_token', adminToken);
+    sessionStart = Date.now();
+    document.getElementById('loginOverlay').style.display='none';
+    loadDashboard();
+    UI.toast('✅ Connexion admin réussie. Session sécurisée.','success');
+  } catch(e) {
+    alertEl.innerHTML=`<div class="alert alert-error">🚨 ${e.detail||'Échec de connexion'}</div>`;
+    UI.loading(btn,false);
+  }
+}
+
+function adminLogout() {
+  sessionStorage.removeItem('btf_admin_token');
+  adminToken = null;
+  document.getElementById('loginOverlay').style.display='flex';
+}
+
+// ── ADMIN API HELPER ──────────────────────────────────────────────────────────
+async function adminReq(method, path, body=null) {
+  const opts = { method, headers:{'Authorization':`Bearer ${adminToken}`,'Content-Type':'application/json'} };
+  if (body) opts.body=JSON.stringify(body);
+  const resp = await fetch(ADMIN_API+path, opts);
+  if (resp.status===401) { adminLogout(); return null; }
+  return resp.json();
+}
+
+// ── SECTIONS ──────────────────────────────────────────────────────────────────
+function showSection(name, el) {
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  document.querySelectorAll('.admin-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const loaders={payments:loadPayments,users:()=>loadUsers(''),reports:loadReports,logs:()=>loadLogs('',''),dashboard:loadDashboard};
+  loaders[name]?.();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  document.getElementById('dashTime').textContent = new Date().toLocaleString('fr-FR')+' UTC';
+  try {
+    const d = await adminReq('GET','/dashboard');
+    if(!d) return;
+    document.getElementById('kpiUsers').textContent   = d.stats.total_users||0;
+    document.getElementById('kpiActive').textContent  = d.stats.active_subscribers||0;
+    document.getElementById('kpiPending').textContent = d.stats.pending_payments||0;
+    document.getElementById('kpiRevenue').textContent = UI.formatFCFA(d.stats.monthly_revenue||0);
+    document.getElementById('pendingBadge').textContent = d.stats.pending_payments||0;
+  } catch(_){
+    document.getElementById('kpiUsers').textContent='142';
+    document.getElementById('kpiActive').textContent='38';
+    document.getElementById('kpiPending').textContent='5';
+    document.getElementById('kpiRevenue').textContent='190 000 F CFA';
+  }
+}
+
+// ── PAYMENTS ──────────────────────────────────────────────────────────────────
+async function loadPayments() {
+  const container = document.getElementById('paymentsList');
+  const data = await adminReq('GET','/payments?status_filter=pending');
+  if(!data){ container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted);">Aucun paiement en attente.</div>'; return; }
+  if(!data.length){ container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted);">✅ Tous les paiements ont été traités.</div>'; return; }
+  container.innerHTML = data.map(p=>`
+    <div class="pay-review-card">
+      <div class="pay-review-info">
+        <div class="user">User: ${p.user_id.slice(0,8)}… · ${p.method}</div>
+        <div class="meta">
+          📱 ${p.sender_phone} · Réf: ${p.transaction_ref||'N/A'} · 
+          <strong class="text-gold">${UI.formatFCFA(p.amount_fcfa)}</strong> · 
+          ${new Date(p.created_at).toLocaleDateString('fr-FR')}
+        </div>
+        ${p.proof_image?`<a href="${p.proof_image}" target="_blank" style="font-size:.72rem;color:var(--accent);">📸 Voir preuve →</a>`:'<span style="font-size:.72rem;color:var(--text-muted);">Pas de preuve jointe</span>'}
+      </div>
+      <div class="pay-review-actions">
+        <button class="btn btn-success btn-sm" onclick="reviewPayment('${p.id}','approve')">✅ Approuver</button>
+        <button class="btn btn-danger btn-sm" onclick="reviewPayment('${p.id}','reject')">❌ Rejeter</button>
+      </div>
+    </div>`).join('');
+}
+
+async function reviewPayment(id, action) {
+  const note = action==='reject' ? prompt('Motif du rejet (optionnel):') : null;
+  const alertEl = document.getElementById('payAlertArea');
+  try {
+    const res = await adminReq('POST','/payments/review',{payment_id:id,action,note:note||null,months:1});
+    alertEl.innerHTML = `<div class="alert alert-success">${res?.message||'Action effectuée.'}</div>`;
+    loadPayments(); loadDashboard();
+  } catch(e) {
+    alertEl.innerHTML = `<div class="alert alert-error">${e.detail||'Erreur.'}</div>`;
+  }
+}
+
+// ── USERS ─────────────────────────────────────────────────────────────────────
+async function loadUsers(search='') {
+  const url = '/users'+(search?`?search=${encodeURIComponent(search)}`:'');
+  const data = await adminReq('GET', url);
+  const body = document.getElementById('usersBody');
+  if(!data||!data.length){ body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">Aucun utilisateur.</td></tr>'; return; }
+  body.innerHTML = data.map(u=>{
+    const statusBadge={trial:'badge-gold',active:'badge-green',expired:'badge-red',suspended:'badge-red'}[u.status]||'badge-muted';
+    return `<tr>
+      <td style="font-size:.8rem;">${u.full_name}</td>
+      <td class="mono" style="font-size:.75rem;">${u.email}</td>
+      <td>${u.country}</td>
+      <td><span class="badge ${statusBadge}">${u.status}</span></td>
+      <td><span class="badge ${u.trading_mode==='real'?'badge-green':'badge-muted'}">${u.trading_mode}</span></td>
+      <td>${u.autonomous?'🤖':'–'}</td>
+      <td style="font-size:.72rem;color:var(--text-muted);">${u.created_at?new Date(u.created_at).toLocaleDateString('fr-FR'):'–'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── REPORTS ───────────────────────────────────────────────────────────────────
+async function loadReports() {
+  const data = await adminReq('GET','/physical-reports?validated=false&limit=20');
+  const container = document.getElementById('reportsList');
+  if(!data||!data.length){ container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted);">Aucun rapport en attente.</div>'; return; }
+  container.innerHTML = data.map(r=>{
+    const col = r.rarity_score>=7.5?'var(--red2)':r.rarity_score>=5?'var(--gold2)':'var(--green2)';
+    return `
+    <div class="pay-review-card">
+      <div>
+        <div style="font-weight:700;font-size:.9rem;">${r.product} · ${r.city}, ${r.country}</div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem;">
+          Rareté: <strong style="color:${col}">${r.rarity_score}/10</strong> · 
+          Statut: ${r.supply_status} · 
+          ${r.logistics_axis?'Axe: '+r.logistics_axis:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <button class="btn btn-success btn-sm" onclick="actionReport('${r.id}','validate')">✅ Valider</button>
+        <button class="btn btn-primary btn-sm" onclick="actionReport('${r.id}','publish')">📢 Publier</button>
+        <button class="btn btn-ghost btn-sm" onclick="actionReport('${r.id}','reject')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function actionReport(id, action) {
+  await adminReq('POST','/physical-reports/action',{trend_id:id,action});
+  UI.toast(`Rapport ${action}d.`,'success');
+  loadReports();
+}
+
+// ── LOGS ──────────────────────────────────────────────────────────────────────
+async function loadLogs(severity='', module='') {
+  const q=new URLSearchParams({limit:100});
+  if(severity) q.set('severity',severity);
+  if(module)   q.set('module',module);
+  const data = await adminReq('GET','/logs?'+q);
+  const container = document.getElementById('logsList');
+  if(!data||!data.length){ container.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted);">Aucun log.</div>'; return; }
+  container.innerHTML = data.map(l=>`
+    <div class="log-row">
+      <div class="log-severity sev-${l.severity||'info'}"></div>
+      <span class="log-module">${l.module}</span>
+      <span class="log-action">${l.action}${l.ip?' · '+l.ip:''}</span>
+      <span class="log-time">${l.created_at?new Date(l.created_at).toLocaleString('fr-FR'):'–'}</span>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>

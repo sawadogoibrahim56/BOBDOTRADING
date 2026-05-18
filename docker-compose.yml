@@ -1,0 +1,68 @@
+version: '3.9'
+
+services:
+  # ─── BACKEND FastAPI ────────────────────────────────────────────────────────
+  btf-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: btf-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - ORANGE_MONEY_NUMBER=${ORANGE_MONEY_NUMBER}
+      - WAVE_NUMBER=${WAVE_NUMBER}
+      - MOOV_MONEY_NUMBER=${MOOV_MONEY_NUMBER}
+      - ADMIN_ALLOWED_IPS=${ADMIN_ALLOWED_IPS}
+      - ADMIN_PIN_CODE=${ADMIN_PIN_CODE}
+      - ADMIN_ALERT_EMAIL=${ADMIN_ALERT_EMAIL}
+      - ADMIN_PHONE=${ADMIN_PHONE}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - FROM_EMAIL=${FROM_EMAIL}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER}
+      - ENVIRONMENT=production
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - btf-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ─── NGINX (Frontend + Reverse Proxy) ────────────────────────────────────
+  btf-nginx:
+    image: nginx:alpine
+    container_name: btf-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - btf-api
+    networks:
+      - btf-network
+
+networks:
+  btf-network:
+    driver: bridge
+
+volumes:
+  btf-logs:

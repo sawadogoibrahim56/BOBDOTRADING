@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTF – Marché Physique UEMOA</title>
+<link rel="stylesheet" href="../assets/css/btf.css">
+<style>
+.app-layout{display:flex;min-height:calc(100vh - 60px);}
+.main-area{flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem;}
+
+.page-hero{background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(245,158,11,.03));border:1px solid rgba(245,158,11,.2);border-radius:var(--radius-lg);padding:1.5rem 2rem;display:flex;justify-content:space-between;align-items:center;}
+.hero-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:.3rem;}
+.hero-sub{font-size:.82rem;color:var(--text-dim);}
+.hero-stats{display:flex;gap:2rem;}
+.hero-stat .val{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:700;color:var(--gold2);}
+.hero-stat .lbl{font-size:.72rem;color:var(--text-muted);}
+
+.country-tabs{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1rem;}
+.ctab{padding:.35rem .85rem;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text-muted);transition:all .2s;font-family:'Instrument Sans',sans-serif;}
+.ctab.active,.ctab:hover{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--gold2);}
+
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+
+.product-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;transition:all .2s;cursor:pointer;}
+.product-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.product-card.critical{border-color:rgba(244,63,94,.3);box-shadow:0 0 20px rgba(244,63,94,.08);}
+.product-card.high{border-color:rgba(245,158,11,.25);}
+.product-card.low{border-color:rgba(16,185,129,.2);}
+.product-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;}
+.product-name{font-weight:700;font-size:.9rem;margin-bottom:.2rem;}
+.product-location{font-size:.72rem;color:var(--text-muted);}
+.rarity-ring{width:52px;height:52px;flex-shrink:0;position:relative;}
+.rarity-ring svg{width:100%;height:100%;}
+.rarity-num{position:absolute;inset:0;display:grid;place-items:center;font-family:'DM Mono',monospace;font-size:.75rem;font-weight:700;}
+.product-meta{display:flex;justify-content:space-between;align-items:center;margin-top:.65rem;padding-top:.65rem;border-top:1px solid var(--border);}
+.meta-key{font-size:.68rem;color:var(--text-muted);}
+.meta-val{font-size:.75rem;font-weight:600;}
+.axis-tag{display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);color:var(--gold2);padding:.15rem .45rem;border-radius:20px;margin-top:.4rem;}
+
+.axis-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;display:flex;align-items:center;gap:1rem;}
+.axis-icon{width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,.1);display:grid;place-items:center;font-size:1.2rem;flex-shrink:0;}
+.axis-name{font-weight:700;font-size:.88rem;margin-bottom:.2rem;}
+.axis-products{font-size:.72rem;color:var(--text-muted);}
+.axis-score{margin-left:auto;text-align:right;}
+.axis-score .sc{font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:700;}
+
+@media(max-width:900px){.grid-3{grid-template-columns:1fr 1fr;}.grid-2{grid-template-columns:1fr;}}
+@media(max-width:600px){.grid-3{grid-template-columns:1fr;}.hero-stats{display:none;}}
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+
+<nav class="navbar">
+  <a href="dashboard.html" class="nav-logo"><div class="logo-mark">BTF</div>Bobdo <span style="color:var(--accent);margin:0 .2rem;">Trading</span></a>
+  <ul class="nav-links">
+    <li><a href="dashboard.html">⚡ Dashboard</a></li>
+    <li><a href="markets.html">📊 Marchés</a></li>
+    <li><a href="physical.html" class="active">🌾 Marché Physique</a></li>
+    <li><a href="settings.html">⚙️ Paramètres</a></li>
+    <li><a href="payment.html">💳 Abonnement</a></li>
+  </ul>
+  <div class="nav-actions">
+    <span class="badge badge-gold">● DEMO</span>
+    <button class="btn btn-ghost btn-sm" onclick="BTFApi.logout().then(()=>location.href='login.html')">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" onclick="location.href='dashboard.html'"><span class="sidebar-icon">⚡</span>Dashboard</li>
+        <li class="sidebar-item active"><span class="sidebar-icon">🌾</span>Marché Physique</li>
+        <li class="sidebar-item" onclick="location.href='markets.html'"><span class="sidebar-icon">📊</span>Trading</li>
+      </ul>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Pays UEMOA</div>
+      <ul class="sidebar-menu" id="countryMenu">
+        <li class="sidebar-item active" onclick="filterCountry('ALL')"><span>🌍</span>Tous les pays</li>
+        <li class="sidebar-item" onclick="filterCountry('BF')"><span>🇧🇫</span>Burkina Faso</li>
+        <li class="sidebar-item" onclick="filterCountry('CI')"><span>🇨🇮</span>Côte d'Ivoire</li>
+        <li class="sidebar-item" onclick="filterCountry('SN')"><span>🇸🇳</span>Sénégal</li>
+        <li class="sidebar-item" onclick="filterCountry('ML')"><span>🇲🇱</span>Mali</li>
+        <li class="sidebar-item" onclick="filterCountry('TG')"><span>🇹🇬</span>Togo</li>
+        <li class="sidebar-item" onclick="filterCountry('BJ')"><span>🇧🇯</span>Bénin</li>
+        <li class="sidebar-item" onclick="filterCountry('NE')"><span>🇳🇪</span>Niger</li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <!-- HERO -->
+    <div class="page-hero">
+      <div>
+        <div class="hero-title">🌾 Intelligence Marché Physique UEMOA</div>
+        <div class="hero-sub">Scanner actif · 8 pays · Détection pénuries, surplus, opportunités en temps réel</div>
+        <div style="margin-top:.65rem;display:flex;align-items:center;gap:.5rem;">
+          <div class="live-dot"></div>
+          <span style="font-size:.75rem;color:var(--text-dim);">Dernière mise à jour : <span id="lastUpdate">–</span></span>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="val" id="statCritical">5</div><div class="lbl">Alertes critiques</div></div>
+        <div class="hero-stat"><div class="val" id="statCountries">8</div><div class="lbl">Pays couverts</div></div>
+        <div class="hero-stat"><div class="val" id="statProducts">47</div><div class="lbl">Produits suivis</div></div>
+      </div>
+    </div>
+
+    <!-- AXES LOGISTIQUES -->
+    <div>
+      <h3 style="font-size:.95rem;font-family:'Syne',sans-serif;margin-bottom:.85rem;color:var(--text-dim);">🚛 Axes Logistiques Stratégiques</h3>
+      <div class="grid-2" id="axesGrid"></div>
+    </div>
+
+    <!-- FILTRES CATÉGORIE -->
+    <div>
+      <div class="country-tabs" id="catTabs">
+        <button class="ctab active" onclick="filterCat('all',this)">Tous</button>
+        <button class="ctab" onclick="filterCat('alimentaire',this)">🐟 Alimentaire</button>
+        <button class="ctab" onclick="filterCat('céréales',this)">🌽 Céréales</button>
+        <button class="ctab" onclick="filterCat('énergie',this)">⛽ Énergie</button>
+        <button class="ctab" onclick="filterCat('élevage',this)">🐄 Élevage</button>
+        <button class="ctab" onclick="filterCat('minerai',this)">🥇 Minerais</button>
+      </div>
+
+      <h3 style="font-size:.95rem;font-family:'Syne',sans-serif;margin-bottom:.85rem;color:var(--text-dim);">📦 Produits – Indice de Rareté</h3>
+      <div class="grid-3" id="productsGrid"></div>
+    </div>
+  </main>
+</div>
+
+<script src="../assets/js/btf-config.js"></script>
+<script src="../assets/js/btf-api.js"></script>
+<script>
+if (!BTFApi.isLoggedIn()) location.href = 'login.html';
+document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('fr-FR');
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const AXES = [
+  {name:'Abidjan → Ouagadougou',icon:'🚛',products:'Poisson congelé, Produits frais',score:8.1,color:'var(--red2)'},
+  {name:'Bobo-Dioulasso Hub',icon:'🌾',products:'Maïs, Sorgho, Mil, Riz',score:4.8,color:'var(--gold2)'},
+  {name:'Lomé → Ouagadougou',icon:'🚢',products:'Céréales, Marchandises',score:5.3,color:'var(--gold2)'},
+  {name:'Dakar → Bamako',icon:'🐟',products:'Arachides, Poisson, Marchandises',score:3.9,color:'var(--green2)'},
+  {name:'Sahel → Ouaga',icon:'🐄',products:'Bétail, Céréales locales',score:6.7,color:'var(--red2)'},
+  {name:'Kaya – Dori Axe',icon:'🌾',products:'Sorgho, Mil, Arachides',score:4.1,color:'var(--gold2)'},
+];
+
+const PRODUCTS = [
+  {name:'Poisson congelé',cat:'alimentaire',country:'BF',city:'Ouagadougou',rarity:8.4,status:'pénurie',axis:'Abidjan→Ouaga',price:'2 800 F/kg'},
+  {name:'Carburant essence',cat:'énergie',country:'BF',city:'Ouagadougou',rarity:7.8,status:'pénurie',axis:'Import',price:'1 200 F/L'},
+  {name:'Gasoil',cat:'énergie',country:'BF',city:'Bobo-Dioulasso',rarity:6.9,status:'difficile',axis:'Import',price:'1 050 F/L'},
+  {name:'Bétail bovin',cat:'élevage',country:'BF',city:'Dori',rarity:6.5,status:'rare',axis:'Sahel→Ouaga',price:'350 000 F/tête'},
+  {name:'Oignon local',cat:'alimentaire',country:'BF',city:'Ouahigouya',rarity:5.8,status:'limité',axis:'–',price:'450 F/kg'},
+  {name:'Farine de blé',cat:'céréales',country:'BF',city:'Kaya',rarity:5.2,status:'limité',axis:'Import',price:'380 F/kg'},
+  {name:'Maïs local',cat:'céréales',country:'BF',city:'Bobo-Dioulasso',rarity:4.8,status:'normal',axis:'Hub Bobo',price:'185 F/kg'},
+  {name:'Or (artisanal)',cat:'minerai',country:'BF',city:'Koudougou',rarity:4.2,status:'contrôlé',axis:'Export',price:'45 000 F/g'},
+  {name:'Sorgho',cat:'céréales',country:'BF',city:'Kaya',rarity:2.3,status:'surplus',axis:'Kaya-Dori',price:'120 F/kg'},
+  {name:'Huile végétale',cat:'alimentaire',country:'CI',city:'Abidjan',rarity:2.1,status:'normal',axis:'Port Abidjan',price:'1 150 F/L'},
+  {name:'Riz importé',cat:'céréales',country:'SN',city:'Dakar',rarity:3.1,status:'normal',axis:'Port Dakar',price:'420 F/kg'},
+  {name:'Volaille (poulet)',cat:'élevage',country:'CI',city:'Abidjan',rarity:2.8,status:'normal',axis:'Élevages locaux',price:'3 200 F/kg'},
+  {name:'Arachides',cat:'minerai',country:'SN',city:'Kaolack',rarity:3.5,status:'normal',axis:'Dakar→Bamako',price:'650 F/kg'},
+  {name:'Poisson frais',cat:'alimentaire',country:'TG',city:'Lomé',rarity:2.5,status:'normal',axis:'Côte atlantique',price:'1 800 F/kg'},
+  {name:'Coton fibre',cat:'minerai',country:'ML',city:'Bamako',rarity:4.1,status:'limité',axis:'Export',price:'1 200 F/kg'},
+];
+
+let currentCat = 'all';
+let currentCountry = 'ALL';
+
+function getRarityClass(score) {
+  if (score>=7.5) return 'critical';
+  if (score>=5.0) return 'high';
+  return 'low';
+}
+function getRarityColor(score) {
+  if (score>=7.5) return '#f43f5e';
+  if (score>=5.0) return '#f59e0b';
+  return '#10b981';
+}
+function getRarityLabel(score) {
+  if (score>=7.5) return '🔴 Critique';
+  if (score>=5.0) return '🟡 Élevé';
+  if (score>=2.5) return '🟠 Modéré';
+  return '🟢 Faible';
+}
+
+function renderAxes() {
+  document.getElementById('axesGrid').innerHTML = AXES.map(a=>`
+    <div class="axis-card">
+      <div class="axis-icon">${a.icon}</div>
+      <div>
+        <div class="axis-name">${a.name}</div>
+        <div class="axis-products">${a.products}</div>
+      </div>
+      <div class="axis-score">
+        <div class="sc" style="color:${a.color}">${a.score}/10</div>
+        <div style="font-size:.65rem;color:var(--text-muted);">Tension</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderProducts() {
+  const filtered = PRODUCTS.filter(p=>{
+    const catOk = currentCat==='all' || p.cat===currentCat;
+    const countryOk = currentCountry==='ALL' || p.country===currentCountry;
+    return catOk && countryOk;
+  });
+  document.getElementById('productsGrid').innerHTML = filtered.map(p=>{
+    const pct = p.rarity/10;
+    const circumference = 2*Math.PI*20;
+    const dash = circumference*pct;
+    const color = getRarityColor(p.rarity);
+    const cls = getRarityClass(p.rarity);
+    return `
+    <div class="product-card ${cls}">
+      <div class="product-header">
+        <div>
+          <div class="product-name">${p.name}</div>
+          <div class="product-location">📍 ${p.city}, ${p.country}</div>
+          ${p.axis!=='–'?`<div class="axis-tag">🚛 ${p.axis}</div>`:''}
+        </div>
+        <div class="rarity-ring">
+          <svg viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="4"/>
+            <circle cx="24" cy="24" r="20" fill="none" stroke="${color}" stroke-width="4"
+              stroke-dasharray="${dash} ${circumference}"
+              stroke-dashoffset="${circumference*.25}"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="rarity-num" style="color:${color}">${p.rarity}</div>
+        </div>
+      </div>
+      <div class="product-meta">
+        <div>
+          <div class="meta-key">Statut</div>
+          <div class="meta-val" style="color:${color}">${p.status}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="meta-key">Prix local</div>
+          <div class="meta-val mono">${p.price}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  if (!filtered.length) {
+    document.getElementById('productsGrid').innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted);">Aucun produit pour ce filtre.</div>`;
+  }
+}
+
+function filterCat(cat, btn) {
+  currentCat = cat;
+  document.querySelectorAll('.ctab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderProducts();
+}
+
+function filterCountry(code) {
+  currentCountry = code;
+  document.querySelectorAll('#countryMenu .sidebar-item').forEach(i=>i.classList.remove('active'));
+  event.target.closest('.sidebar-item').classList.add('active');
+  renderProducts();
+}
+
+renderAxes();
+renderProducts();
+setInterval(()=>{
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('fr-FR');
+}, 60000);
+</script>
+</body>
+</html>

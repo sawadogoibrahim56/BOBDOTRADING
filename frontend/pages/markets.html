@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTF – Marchés & Trading</title>
+<link rel="stylesheet" href="../assets/css/btf.css">
+<style>
+.app-layout{display:flex;min-height:calc(100vh - 60px);}
+.main-area{flex:1;padding:1.25rem 1.5rem;overflow-y:auto;display:flex;flex-direction:column;gap:1.25rem;}
+.right-rail{width:280px;flex-shrink:0;background:rgba(13,21,38,.7);border-left:1px solid var(--border);padding:1.1rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;}
+
+/* MARKET GRID */
+.market-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;}
+.market-tile{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:.85rem 1rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.market-tile:hover,.market-tile.active{border-color:var(--border2);background:var(--card2);}
+.market-tile.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(56,189,248,.15);}
+.mt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;}
+.mt-symbol{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:600;}
+.mt-exchange{font-size:.62rem;color:var(--text-muted);}
+.mt-price{font-family:'DM Mono',monospace;font-size:1rem;font-weight:700;margin-bottom:.2rem;}
+.mt-change{font-size:.72rem;font-weight:600;}
+.mt-chart{height:32px;margin-top:.4rem;}
+.mt-chart svg{width:100%;height:100%;overflow:visible;}
+
+/* ORDER BOOK */
+.book-row{display:flex;justify-content:space-between;padding:.22rem .5rem;font-family:'DM Mono',monospace;font-size:.72rem;position:relative;border-radius:3px;}
+.book-row .fill{position:absolute;top:0;bottom:0;border-radius:3px;opacity:.12;}
+.book-ask .fill{right:0;background:var(--red);}
+.book-bid .fill{left:0;background:var(--green);}
+.book-spread{text-align:center;font-size:.68rem;color:var(--text-muted);padding:.3rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+
+/* TRADES */
+.trade-row{display:flex;justify-content:space-between;padding:.25rem .5rem;font-family:'DM Mono',monospace;font-size:.7rem;}
+.trade-buy{color:var(--green2);}
+.trade-sell{color:var(--red2);}
+
+/* SIGNALS */
+.signal-card{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:.85rem;}
+.signal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
+.signal-symbol{font-family:'DM Mono',monospace;font-size:.88rem;font-weight:700;}
+.signal-confidence{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--text-muted);}
+.signal-bars{display:flex;gap:2px;margin:.5rem 0;}
+.signal-bar{height:8px;flex:1;border-radius:3px;background:rgba(255,255,255,.06);}
+.signal-bar.active-buy{background:var(--green);}
+.signal-bar.active-sell{background:var(--red);}
+.signal-bar.active-hold{background:var(--gold);}
+
+@media(max-width:1200px){.market-grid{grid-template-columns:1fr 1fr;}.right-rail{display:none;}}
+@media(max-width:640px){.market-grid{grid-template-columns:1fr;}  }
+</style>
+</head>
+<body>
+<div class="bg-mesh"></div>
+
+<nav class="navbar">
+  <a href="dashboard.html" class="nav-logo"><div class="logo-mark">BTF</div>Bobdo <span style="color:var(--accent);margin:0 .2rem;">Trading</span></a>
+  <ul class="nav-links">
+    <li><a href="dashboard.html">⚡ Dashboard</a></li>
+    <li><a href="markets.html" class="active">📊 Marchés</a></li>
+    <li><a href="physical.html">🌾 Marché Physique</a></li>
+    <li><a href="settings.html">⚙️ Paramètres</a></li>
+    <li><a href="payment.html">💳 Abonnement</a></li>
+  </ul>
+  <div class="nav-actions">
+    <span class="badge badge-gold">● DEMO</span>
+    <button class="btn btn-ghost btn-sm" onclick="BTFApi.logout().then(()=>location.href='login.html')">Déconnexion</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Marchés</div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-item active"><span class="sidebar-icon">📊</span>Tous les marchés</li>
+        <li class="sidebar-item"><span class="sidebar-icon">₿</span>Crypto</li>
+        <li class="sidebar-item"><span class="sidebar-icon">🏦</span>BRVM</li>
+        <li class="sidebar-item"><span class="sidebar-icon">📈</span>Mes ordres<span class="sidebar-badge" id="openCount">0</span></li>
+      </ul>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Exchanges</div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-item" id="sb-binance"><span>🟡</span>Binance</li>
+        <li class="sidebar-item" id="sb-okx"><span>⚫</span>OKX</li>
+        <li class="sidebar-item" id="sb-bybit"><span>🟠</span>Bybit</li>
+        <li class="sidebar-item" id="sb-brvm"><span>🏦</span>BRVM</li>
+      </ul>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Signaux IA</div>
+      <div id="sidebarSignals" style="display:flex;flex-direction:column;gap:.4rem;"></div>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <!-- MARKET TILES -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;">
+        <h2 style="font-size:1rem;font-family:'Syne',sans-serif;">📊 Marchés en Temps Réel</h2>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <div class="live-dot"></div>
+          <span style="font-size:.75rem;color:var(--text-muted);">WebSocket · CCXT</span>
+        </div>
+      </div>
+      <div class="market-grid" id="marketGrid"></div>
+    </div>
+
+    <!-- CHART -->
+    <div class="card" style="padding:1.1rem 1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;flex-wrap:wrap;gap:.75rem;">
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;" id="chartTitle">BTC/USDT</div>
+          <div style="font-size:.72rem;color:var(--text-muted);">Binance · 15m</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div style="display:flex;gap:.25rem;" id="tfBtns">
+            <button class="btn btn-ghost btn-sm">1m</button>
+            <button class="btn btn-primary btn-sm">15m</button>
+            <button class="btn btn-ghost btn-sm">1H</button>
+            <button class="btn btn-ghost btn-sm">4H</button>
+            <button class="btn btn-ghost btn-sm">1J</button>
+          </div>
+          <div>
+            <div class="mono" style="font-size:1.25rem;color:var(--accent);" id="chartPrice">$67 234.50</div>
+            <div style="font-size:.72rem;color:var(--green2);" id="chartChange">▲ +2.14%</div>
+          </div>
+        </div>
+      </div>
+      <div style="height:220px;position:relative;">
+        <svg style="width:100%;height:100%;overflow:visible;" id="mainChart" viewBox="0 0 800 220" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="cg1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#818cf8"/><stop offset="100%" style="stop-color:#38bdf8"/>
+            </linearGradient>
+            <linearGradient id="cgArea" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#38bdf8;stop-opacity:.18"/><stop offset="100%" style="stop-color:#38bdf8;stop-opacity:0"/>
+            </linearGradient>
+          </defs>
+          <path id="cArea" fill="url(#cgArea)"/>
+          <path id="cLine" fill="none" stroke="url(#cg1)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle id="cDot" r="5" fill="#38bdf8" filter="drop-shadow(0 0 5px #38bdf8)"/>
+        </svg>
+      </div>
+      <!-- Indicators -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem;">
+        <div style="font-size:.7rem;background:rgba(56,189,248,.07);border:1px solid rgba(56,189,248,.15);padding:.25rem .6rem;border-radius:6px;"><span class="text-muted">EMA20</span> <span class="mono text-accent" id="iEma20">66 891</span></div>
+        <div style="font-size:.7rem;background:rgba(129,140,248,.07);border:1px solid rgba(129,140,248,.15);padding:.25rem .6rem;border-radius:6px;"><span class="text-muted">RSI</span> <span class="mono text-purple" id="iRsi">58.4</span></div>
+        <div style="font-size:.7rem;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.15);padding:.25rem .6rem;border-radius:6px;"><span class="text-muted">MACD</span> <span class="mono text-gold" id="iMacd">+124</span></div>
+        <div style="font-size:.7rem;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.15);padding:.25rem .6rem;border-radius:6px;"><span class="text-muted">BB+</span> <span class="mono text-green" id="iBbUp">68 450</span></div>
+        <div style="font-size:.7rem;background:rgba(244,63,94,.07);border:1px solid rgba(244,63,94,.15);padding:.25rem .6rem;border-radius:6px;"><span class="text-muted">BB−</span> <span class="mono text-red" id="iBbLo">65 810</span></div>
+        <div style="margin-left:auto;font-size:.7rem;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);padding:.25rem .6rem;border-radius:6px;">
+          <strong class="text-green" id="iSignal">🤖 ACHAT FORT</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS TABLE -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.1rem;border-bottom:1px solid var(--border);">
+        <span class="card-title">⚡ Mes Ordres</span>
+        <div style="display:flex;gap:.35rem;">
+          <button class="btn btn-ghost btn-sm" onclick="loadOrders('all')">Tous</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadOrders('open')">Ouverts</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadOrders('filled')">Exécutés</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Paire</th><th>Exchange</th><th>Côté</th><th>Qté</th><th>Prix entré</th><th>SL</th><th>TP</th><th>P&L</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="ordersBody"><tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT RAIL -->
+  <aside class="right-rail">
+    <!-- ORDER FORM -->
+    <div style="background:var(--card2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1rem;">
+      <div style="font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;margin-bottom:.85rem;">⚡ Ordre Rapide</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;background:rgba(0,0,0,.3);border-radius:10px;padding:3px;margin-bottom:.85rem;">
+        <button style="padding:.45rem;border-radius:8px;font-size:.78rem;font-weight:700;border:none;background:var(--green);color:#fff;cursor:pointer;font-family:'Instrument Sans',sans-serif;" id="qBuy" onclick="setQSide('buy')">↑ ACHAT</button>
+        <button style="padding:.45rem;border-radius:8px;font-size:.78rem;font-weight:700;border:none;background:rgba(244,63,94,.15);color:var(--red2);cursor:pointer;font-family:'Instrument Sans',sans-serif;" id="qSell" onclick="setQSide('sell')">↓ VENTE</button>
+      </div>
+      <div class="form-group"><label class="form-label">Actif</label>
+        <select class="form-select" id="qSymbol" style="font-size:.8rem;">
+          <option>BTC/USDT</option><option>ETH/USDT</option><option>BNB/USDT</option>
+          <option>SOL/USDT</option><option>SONATEL</option><option>CORIS BANK</option>
+        </select>
+      </div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label class="form-label">Qté</label><input type="number" id="qQty" class="form-input mono" value="0.001" style="font-size:.8rem;"></div>
+        <div class="form-group"><label class="form-label">Prix</label><input type="number" id="qPrice" class="form-input mono" placeholder="Market" style="font-size:.8rem;"></div>
+      </div>
+      <div class="form-row" style="grid-template-columns:1fr 1fr;">
+        <div class="form-group"><label class="form-label" style="color:var(--red2);">Stop-Loss ⚠</label><input type="number" id="qSl" class="form-input mono" style="border-color:rgba(244,63,94,.3);font-size:.8rem;"></div>
+        <div class="form-group"><label class="form-label" style="color:var(--green2);">Take-Profit</label><input type="number" id="qTp" class="form-input mono" style="border-color:rgba(16,185,129,.3);font-size:.8rem;"></div>
+      </div>
+      <button style="width:100%;padding:.65rem;border-radius:10px;font-size:.85rem;font-weight:700;font-family:'Syne',sans-serif;border:none;background:linear-gradient(135deg,var(--green),#059669);color:#fff;cursor:pointer;box-shadow:0 4px 16px rgba(16,185,129,.3);" id="qExec" onclick="quickOrder()">↑ Exécuter ACHAT</button>
+    </div>
+
+    <!-- ORDER BOOK -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:.65rem .85rem;border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:.4rem;">
+        <div class="live-dot"></div>Carnet d'Ordres
+      </div>
+      <div style="padding:.5rem 0;" id="orderBook">
+        <div id="asks"></div>
+        <div class="book-spread" id="spread">Spread: –</div>
+        <div id="bids"></div>
+      </div>
+    </div>
+
+    <!-- RECENT TRADES -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:.65rem .85rem;border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;">Dernières Transactions</div>
+      <div id="recentTrades" style="padding:.25rem 0;max-height:180px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- AI SIGNALS -->
+    <div style="background:linear-gradient(135deg,rgba(129,140,248,.07),rgba(56,189,248,.04));border:1px solid rgba(129,140,248,.18);border-radius:var(--radius-lg);padding:.85rem;">
+      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.75rem;font-family:'Syne',sans-serif;font-size:.82rem;font-weight:700;">
+        <div style="width:24px;height:24px;background:linear-gradient(135deg,var(--purple),var(--accent));border-radius:7px;display:grid;place-items:center;font-size:.7rem;">🧠</div>
+        Signaux IA BTF
+      </div>
+      <div id="aiSignalsList"></div>
+    </div>
+  </aside>
+</div>
+
+<script src="../assets/js/btf-config.js"></script>
+<script src="../assets/js/btf-api.js"></script>
+<script>
+if (!BTFApi.isLoggedIn()) location.href = 'login.html';
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const MARKETS = [
+  {symbol:'BTC/USDT',exchange:'Binance',price:67234.5,change:2.14,up:true,vol:'2.4B'},
+  {symbol:'ETH/USDT',exchange:'Bybit',  price:3421.0, change:1.87,up:true,vol:'890M'},
+  {symbol:'BNB/USDT',exchange:'Binance',price:584.0,  change:-0.43,up:false,vol:'120M'},
+  {symbol:'SOL/USDT',exchange:'OKX',   price:178.0,  change:3.21,up:true,vol:'450M'},
+  {symbol:'XRP/USDT',exchange:'Kraken',price:0.621,  change:-1.14,up:false,vol:'200M'},
+  {symbol:'ADA/USDT',exchange:'Binance',price:0.482, change:0.91,up:true,vol:'85M'},
+  {symbol:'SONATEL', exchange:'BRVM',  price:14500,  change:0.69,up:true,vol:'N/A'},
+  {symbol:'CORIS BK',exchange:'BRVM',  price:8750,   change:-0.23,up:false,vol:'N/A'},
+];
+
+const AI_SIGNALS = [
+  {symbol:'BTC/USDT',action:'buy',conf:0.82,reason:'RSI survendu · MACD haussier'},
+  {symbol:'ETH/USDT',action:'buy',conf:0.71,reason:'EMA20>EMA50 · Volume élevé'},
+  {symbol:'BNB/USDT',action:'hold',conf:0.55,reason:'RSI neutre · Consolidation'},
+  {symbol:'SONATEL', action:'buy',conf:0.67,reason:'Sentiment NLP positif · Q1 fort'},
+];
+
+let qSide = 'buy';
+let chartPts = Array.from({length:40},()=>100+Math.random()*100);
+let activeMarket = 0;
+
+// ── MARKET TILES ─────────────────────────────────────────────────────────────
+function buildMiniChart() {
+  const pts = Array.from({length:10},()=>100+Math.random()*50);
+  const W=80,H=30,pad=2;
+  const mn=Math.min(...pts),mx=Math.max(...pts);
+  const sx=i=>pad+i*(W-pad*2)/(pts.length-1);
+  const sy=v=>H-pad-((v-mn)/(mx-mn||1))*(H-pad*2);
+  let d='';
+  pts.forEach((v,i)=>d+=(i===0?`M${sx(i)},${sy(v)}`:`L${sx(i)},${sy(v)}`));
+  return d;
+}
+
+function renderMarketGrid() {
+  document.getElementById('marketGrid').innerHTML = MARKETS.map((m,i)=>`
+    <div class="market-tile ${i===activeMarket?'active':''}" onclick="selectMarket(${i})">
+      <div class="mt-header">
+        <span class="mt-symbol">${m.symbol}</span>
+        <span class="mt-exchange">${m.exchange}</span>
+      </div>
+      <div class="mt-price ${m.up?'text-green':'text-red'}">${m.price>100?m.price.toLocaleString('fr-FR'):m.price}</div>
+      <div class="mt-change ${m.up?'text-green':'text-red'}">${m.up?'▲':' ▼'} ${Math.abs(m.change)}%</div>
+      <div class="mt-chart">
+        <svg viewBox="0 0 80 30">
+          <path d="${buildMiniChart()}" fill="none" stroke="${m.up?'#34d399':'#fb7185'}" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>`).join('');
+}
+
+function selectMarket(i) {
+  activeMarket = i;
+  const m = MARKETS[i];
+  document.getElementById('chartTitle').textContent = m.symbol;
+  document.getElementById('chartPrice').textContent = m.price>100?'$'+m.price.toLocaleString('fr-FR'):'$'+m.price;
+  document.getElementById('chartChange').textContent = (m.up?'▲ +':'▼ ')+m.change+'%';
+  document.getElementById('chartChange').className = m.up ? 'text-green' : 'text-red';
+  renderMarketGrid();
+  chartPts = Array.from({length:40},()=>100+Math.random()*100);
+  buildChart();
+}
+
+// ── MAIN CHART ────────────────────────────────────────────────────────────────
+function buildChart() {
+  const W=800,H=220,p=12;
+  const mn=Math.min(...chartPts)-5,mx=Math.max(...chartPts)+5;
+  const sx=i=>p+i*(W-p*2)/(chartPts.length-1);
+  const sy=v=>H-p-((v-mn)/(mx-mn))*(H-p*2);
+  let L='',A='';
+  chartPts.forEach((v,i)=>{const x=sx(i),y=sy(v);if(i===0){L+=`M${x},${y}`;A+=`M${x},${H} L${x},${y}`;}else{L+=` L${x},${y}`;A+=` L${x},${y}`;}});
+  A+=` L${sx(chartPts.length-1)},${H} Z`;
+  document.getElementById('cLine').setAttribute('d',L);
+  document.getElementById('cArea').setAttribute('d',A);
+  const lx=sx(chartPts.length-1),ly=sy(chartPts[chartPts.length-1]);
+  document.getElementById('cDot').setAttribute('cx',lx);
+  document.getElementById('cDot').setAttribute('cy',ly);
+}
+buildChart();
+
+// ── LIVE UPDATES ──────────────────────────────────────────────────────────────
+setInterval(()=>{
+  MARKETS.forEach(m=>{
+    const delta=(Math.random()-.49)*m.price*.003;
+    m.price=Math.max(.001,parseFloat((m.price+delta).toFixed(m.price>100?2:4)));
+    m.change=parseFloat((m.change+(Math.random()-.5)*.1).toFixed(2));
+    m.up=m.change>=0;
+  });
+  renderMarketGrid();
+  const m=MARKETS[activeMarket];
+  document.getElementById('chartPrice').textContent='$'+UI.formatPrice(m.price,m.price>1?2:4);
+  chartPts.shift();chartPts.push(100+Math.random()*100);
+  buildChart();
+  // Indicators
+  document.getElementById('iEma20').textContent=UI.formatPrice(m.price*.997,0);
+  document.getElementById('iRsi').textContent=(50+Math.random()*20).toFixed(1);
+  document.getElementById('iMacd').textContent='+'+(Math.random()*200).toFixed(0);
+},2000);
+
+// ── ORDER BOOK SIMULATION ─────────────────────────────────────────────────────
+function buildOrderBook() {
+  const m=MARKETS[activeMarket];
+  const mid=m.price;
+  const asks=[],bids=[];
+  for(let i=1;i<=8;i++){asks.push({p:mid+i*(mid*.0003),v:(Math.random()*5+.1).toFixed(3)});}
+  for(let i=1;i<=8;i++){bids.push({p:mid-i*(mid*.0003),v:(Math.random()*5+.1).toFixed(3)});}
+  const maxVol=Math.max(...[...asks,...bids].map(x=>parseFloat(x.v)));
+  document.getElementById('asks').innerHTML=[...asks].reverse().map(a=>`
+    <div class="book-row book-ask">
+      <span class="text-red">${UI.formatPrice(a.p,2)}</span>
+      <span class="text-muted">${a.v}</span>
+      <div class="fill" style="width:${parseFloat(a.v)/maxVol*80}%"></div>
+    </div>`).join('');
+  document.getElementById('bids').innerHTML=bids.map(b=>`
+    <div class="book-row book-bid">
+      <span class="text-green">${UI.formatPrice(b.p,2)}</span>
+      <span class="text-muted">${b.v}</span>
+      <div class="fill" style="width:${parseFloat(b.v)/maxVol*80}%"></div>
+    </div>`).join('');
+  const spread=(asks[0].p-bids[0].p);
+  document.getElementById('spread').textContent=`Spread: $${spread.toFixed(2)} (${(spread/mid*100).toFixed(3)}%)`;
+}
+setInterval(buildOrderBook,1500);
+buildOrderBook();
+
+// ── RECENT TRADES ─────────────────────────────────────────────────────────────
+function buildRecentTrades() {
+  const m=MARKETS[activeMarket];
+  const trades=Array.from({length:12},()=>({
+    p:UI.formatPrice(m.price*(1+(Math.random()-.5)*.002),2),
+    v:(Math.random()*2+.01).toFixed(3),
+    buy:Math.random()>.5,
+    t:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+  }));
+  document.getElementById('recentTrades').innerHTML=trades.map(t=>`
+    <div class="trade-row ${t.buy?'trade-buy':'trade-sell'}">
+      <span>${t.p}</span><span>${t.v}</span><span>${t.t}</span>
+    </div>`).join('');
+}
+setInterval(buildRecentTrades,2000);
+buildRecentTrades();
+
+// ── AI SIGNALS ────────────────────────────────────────────────────────────────
+function renderSignals() {
+  const signalColors={buy:'sp-buy',sell:'sp-sell',hold:'sp-hold'};
+  const signalLabels={buy:'▲ ACHAT',sell:'▼ VENTE',hold:'⏸ ATTENTE'};
+  document.getElementById('aiSignalsList').innerHTML=AI_SIGNALS.map(s=>`
+    <div style="margin-bottom:.65rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+        <div style="display:flex;align-items:center;gap:.4rem;">
+          <span class="mono" style="font-size:.78rem;font-weight:700;">${s.symbol}</span>
+          <span class="signal-pill ${signalColors[s.action]}" style="display:inline-flex;align-items:center;gap:.2rem;font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:20px;">${signalLabels[s.action]}</span>
+        </div>
+        <span class="mono" style="font-size:.68rem;color:var(--text-muted);">${(s.conf*100).toFixed(0)}%</span>
+      </div>
+      <div style="font-size:.7rem;color:var(--text-muted);">${s.reason}</div>
+      <div class="signal-bars">
+        ${Array.from({length:10},(_,i)=>`<div class="signal-bar ${i<Math.round(s.conf*10)?'active-'+s.action:''}"></div>`).join('')}
+      </div>
+    </div>`).join('');
+  // Sidebar signals
+  document.getElementById('sidebarSignals').innerHTML=AI_SIGNALS.slice(0,3).map(s=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:.75rem;padding:.35rem .5rem;background:rgba(255,255,255,.03);border-radius:7px;">
+      <span class="mono">${s.symbol}</span>
+      <span class="${s.action==='buy'?'text-green':s.action==='sell'?'text-red':'text-gold'}">${s.action==='buy'?'▲':s.action==='sell'?'▼':'⏸'} ${(s.conf*100).toFixed(0)}%</span>
+    </div>`).join('');
+}
+renderSignals();
+
+// ── ORDER FORM ────────────────────────────────────────────────────────────────
+function setQSide(side) {
+  qSide=side;
+  document.getElementById('qBuy').style.background=side==='buy'?'var(--green)':'rgba(16,185,129,.15)';
+  document.getElementById('qBuy').style.color=side==='buy'?'#fff':'var(--green2)';
+  document.getElementById('qSell').style.background=side==='sell'?'var(--red)':'rgba(244,63,94,.15)';
+  document.getElementById('qSell').style.color=side==='sell'?'#fff':'var(--red2)';
+  const btn=document.getElementById('qExec');
+  if(side==='buy'){btn.style.background='linear-gradient(135deg,var(--green),#059669)';btn.textContent='↑ Exécuter ACHAT';}
+  else{btn.style.background='linear-gradient(135deg,var(--red),#be123c)';btn.textContent='↓ Exécuter VENTE';}
+}
+
+async function quickOrder() {
+  const symbol = document.getElementById('qSymbol').value;
+  const qty    = parseFloat(document.getElementById('qQty').value)||0;
+  const price  = parseFloat(document.getElementById('qPrice').value)||null;
+  const sl     = parseFloat(document.getElementById('qSl').value)||null;
+  const tp     = parseFloat(document.getElementById('qTp').value)||null;
+  if(!qty) { UI.toast('Quantité requise.','warning'); return; }
+  if(!sl)  { UI.toast('Stop-Loss obligatoire !','error'); return; }
+  const btn=document.getElementById('qExec'); UI.loading(btn,true);
+  try {
+    await BTFApi.placeOrder({exchange:'binance',symbol,side:qSide,quantity:qty,price,stop_loss:sl,take_profit:tp});
+    UI.toast(`✅ ${qSide==='buy'?'ACHAT':'VENTE'} ${symbol} exécuté !`,'success');
+    loadOrders();
+  } catch(e){ UI.toast(e.detail||'Erreur.','error'); }
+  finally{ UI.loading(btn,false); }
+}
+
+// ── ORDERS ───────────────────────────────────────────────────────────────────
+async function loadOrders(filter='all') {
+  const body=document.getElementById('ordersBody');
+  try {
+    const orders=await BTFApi.getOrders(filter==='all'?null:filter,20);
+    document.getElementById('openCount').textContent=orders.filter(o=>o.status==='open').length;
+    if(!orders.length){body.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">Aucun ordre.</td></tr>`;return;}
+    body.innerHTML=orders.map(o=>{
+      const sideB=o.side==='buy'?'badge-green':'badge-red';
+      const statDot=o.status==='filled'?'🟢':o.status==='open'?'🟡':o.status==='cancelled'?'⚫':'🔴';
+      const pnlStr=o.pnl!=null?`<span class="${UI.pnlClass(o.pnl)} mono">${UI.pnlSign(o.pnl)}${UI.formatPrice(o.pnl,2)}</span>`:'–';
+      return `<tr>
+        <td class="mono" style="font-size:.78rem;">${o.symbol}</td>
+        <td style="font-size:.72rem;color:var(--text-muted);">${o.exchange}</td>
+        <td><span class="badge ${sideB}">${o.side==='buy'?'↑':'↓'} ${o.side.toUpperCase()}</span></td>
+        <td class="mono" style="font-size:.75rem;">${o.quantity}</td>
+        <td class="mono" style="font-size:.75rem;">${o.filled_price?UI.formatPrice(o.filled_price,2):'–'}</td>
+        <td class="mono text-red" style="font-size:.72rem;">${o.stop_loss?UI.formatPrice(o.stop_loss,2):'–'}</td>
+        <td class="mono text-green" style="font-size:.72rem;">${o.take_profit?UI.formatPrice(o.take_profit,2):'–'}</td>
+        <td>${pnlStr}</td>
+        <td>${statDot} <span style="font-size:.72rem;">${o.status}</span>${o.is_autonomous?'<span class="badge badge-purple" style="margin-left:.25rem;font-size:.58rem;">IA</span>':''}</td>
+        <td>${o.status==='open'?`<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">✕</button>`:'–'}</td>
+      </tr>`;
+    }).join('');
+  } catch(_){
+    body.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-muted);">Connexion au serveur requise.</td></tr>`;
+  }
+}
+
+async function cancelOrder(id) {
+  if(!confirm('Annuler cet ordre ?')) return;
+  try{ await BTFApi.cancelOrder(id); UI.toast('Ordre annulé.','info'); loadOrders(); }
+  catch(e){ UI.toast(e.detail||'Erreur.','error'); }
+}
+
+// ── TIMEFRAMES ────────────────────────────────────────────────────────────────
+document.querySelectorAll('#tfBtns .btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#tfBtns .btn').forEach(b=>{b.className='btn btn-ghost btn-sm';});
+    btn.className='btn btn-primary btn-sm';
+    chartPts=Array.from({length:40},()=>100+Math.random()*100);
+    buildChart();
+  });
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderMarketGrid();
+loadOrders();
+</script>
+</body>
+</html>
