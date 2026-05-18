@@ -23,7 +23,7 @@ ccxt==4.4.29
 numpy==1.26.4
 
 # HTTP Client
-httpx==0.28.1
+httpx==0.27.2
 
 # Notifications
 twilio==9.4.0
